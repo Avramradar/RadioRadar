@@ -75,25 +75,57 @@ if(window.L){
   if(window.ResizeObserver)new ResizeObserver(refreshMap).observe($('map'));
   [100,400,900,1800].forEach(ms=>setTimeout(()=>{checkCss();refreshMap()},ms));
 }else{say('Не удалось загрузить Leaflet. Проверьте интернет.');}
+// Refit only after Leaflet has measured the actual visible container.
+let focusJob=0;
+function focusZone(){
+ if(!map||!center||!circle||!$('map').getClientRects().length)return;
+ const mapEl=$('map');
+ if(mapEl.clientWidth<120||mapEl.clientHeight<120)return;
+ map.invalidateSize({animate:false,pan:false});
+ const bounds=circle.getBounds();
+ if(!bounds.isValid())return;
+ map.fitBounds(bounds,{padding:[28,28],animate:false,maxZoom:17});
+}
+function scheduleFocus(){
+ const job=++focusJob;
+ [0,120,380,850].forEach(ms=>setTimeout(()=>{
+  if(job!==focusJob)return;
+  requestAnimationFrame(()=>focusZone());
+ },ms));
+}
 function setCenter(lat,lon){
- if(!map)return;center=[lat,lon];
- if(marker)map.removeLayer(marker);if(circle)map.removeLayer(circle);
+ if(!map||!Number.isFinite(lat)||!Number.isFinite(lon))return;
+ center=[lat,lon];
+ if(marker)map.removeLayer(marker);
+ if(circle)map.removeLayer(circle);
  marker=L.circleMarker(center,{radius:8,color:'#fff',weight:2,fillColor:'#249de6',fillOpacity:1}).addTo(map).bindPopup('Центр выбранной зоны');
  circle=L.circle(center,{radius:Number($('radius').value),color:'#61c8ff',dashArray:'6 6',weight:2,fillOpacity:.05}).addTo(map);
- refreshMap();map.fitBounds(circle.getBounds(),{padding:[22,22],animate:false});
- setTimeout(()=>{refreshMap();map.fitBounds(circle.getBounds(),{padding:[22,22],animate:false})},350);
+ say('Центр зоны определён. Радиус '+(Number($('radius').value)/1000)+' км. Это не координаты раций.');
+ scheduleFocus();
 }
 $('locate').addEventListener('click',()=>{
  if(!navigator.geolocation){say('Геолокация недоступна.');return;}
  $('locate').disabled=true;say('Определяем местоположение…');
- navigator.geolocation.getCurrentPosition(p=>{$('locate').disabled=false;setCenter(p.coords.latitude,p.coords.longitude);say('Центр зоны определён. Это не координаты радиостанций.');},e=>{$('locate').disabled=false;say('Ошибка геолокации: '+e.message);},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
+ navigator.geolocation.getCurrentPosition(p=>{
+  $('locate').disabled=false;
+  setCenter(p.coords.latitude,p.coords.longitude);
+ },e=>{
+  $('locate').disabled=false;
+  say('Ошибка геолокации: '+e.message);
+ },{enableHighAccuracy:true,timeout:15000,maximumAge:60000});
 });
-$('radius').addEventListener('change',()=>{if(center)setCenter(...center)});
+$('radius').addEventListener('change',()=>{
+ if(!center||!circle)return;
+ circle.setRadius(Number($('radius').value));
+ say('Радиус зоны: '+(Number($('radius').value)/1000)+' км. Это не гарантированная дальность приёма.');
+ scheduleFocus();
+});
 document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t===tab));
  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id===tab.dataset.tab));
  if(tab.dataset.tab==='map-pane'){
-  [40,200,600].forEach(ms=>setTimeout(()=>{refreshMap();if(circle)map.fitBounds(circle.getBounds(),{padding:[22,22],animate:false});},ms));
+  if(center)scheduleFocus();
+  else [30,250].forEach(ms=>setTimeout(refreshMap,ms));
  }
 }));
 const key='radioradar_manual_readings_v1';let readings=[];

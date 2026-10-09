@@ -38,7 +38,9 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
  <div id="map" aria-label="Карта зоны наблюдения"></div>
  <div class="pad"><div class="note">Окружность — выбранная географическая зона, <b>не дальность радиоприёма</b>. Без подключённого приёмника приложение не обнаруживает активные рации.</div><div class="muted">🔵 Центр зоны · голубой пунктир — радиус. Координаты запрашиваются только с вашего разрешения.</div></div>
 </section>
-<section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых источников измерений</span><strong>0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong>0</strong></div></div><div class="note">Внешняя станция WebSDR доступна для ручного наблюдения в разделе SDR, но автоматические измерения из неё не поступают. Отсутствие данных не означает отсутствие передач. Записи ниже добавляются вручную.</div><h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные записи сохраняются в памяти браузера на этом устройстве.</div></div></section>
+<section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых источников измерений</span><strong>0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong>0</strong></div></div><div class="note">Внешняя станция WebSDR доступна для ручного наблюдения в разделе SDR, но автоматические измерения из неё не поступают. Отсутствие данных не означает отсутствие передач. Записи ниже добавляются вручную.</div><h2>Импорт измерений TXT / JSON</h2>
+<div class="card"><label for="import-file" class="muted">Выберите локальный файл измерений (до 1 МБ)</label><input id="import-file" type="file" accept=".txt,.json,text/plain,application/json" style="display:block;width:100%;margin:10px 0"><button type="button" id="import-btn">📥 Импортировать</button><div id="import-status" class="muted" role="status" style="margin-top:10px">Данные импортируются только по вашему выбору, не считываются с WebSDR автоматически.</div><details style="margin-top:10px"><summary>Формат файлов</summary><p class="muted">JSON: массив записей или объект с полем measurements. Каждая запись: mhz (МГц), mode, strength, time (ISO 8601), source.</p><p class="muted">TXT: одна запись в строке, поля разделены точкой с запятой: частота МГц; тип; уровень; время ISO 8601; источник. Первая строка может содержать заголовки mhz;mode;strength;time;source. Пример: 145.500;FM / NFM;-81.4 dBm;2026-10-09T10:00:00Z;Мой приёмник.</p><p class="muted">Импортированные записи обозначаются отдельно от ручных. Источник файла указывается как предоставленный пользователем, а не проверенный приложением.</p></details></div>
+<h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
 <section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — прямой переход к согласованной с оператором станции и каталоги других приёмников. Открытие WebSDR не подключает автоматическое измерение сигнала к RadioRadar.</div>
 <div class="receiver"><h3>📡 WebSDR RW6MIT / R6MX</h3><div class="meta">Ростов-на-Дону · онлайн-приёмник<br>Доступные на просмотренном интерфейсе диапазоны: <b>2 м</b> и <b>70 см</b>.<br>Режим: <b>ручной просмотр спектра и прослушивание</b>.<br>Автоматический поток измерений: <b>не подключён</b>.<br>Приёмник находится в Ростове-на-Дону, а не обязательно в вашей зоне на карте.</div><a class="link" href="http://87.117.25.250/" target="_blank" rel="noopener noreferrer">📻 Открыть WebSDR<span>Внешний сайт http://87.117.25.250/ — в некоторых версиях Telegram HTTP-ссылки открываются только во внешнем браузере.</span></a></div>
 <a class="link" href="https://rx.linkfanel.net/" target="_blank" rel="noopener noreferrer">🌍 KiwiSDR Map<span>Карта доступных удалённых приёмников, многие работают преимущественно на КВ.</span></a><a class="link" href="https://www.receiverbook.de/" target="_blank" rel="noopener noreferrer">📍 ReceiverBook<span>Справочник общедоступных онлайн-приёмников.</span></a><a class="link" href="http://websdr.org/" target="_blank" rel="noopener noreferrer">🎧 WebSDR<span>Каталог приёмников, доступность зависит от операторов.</span></a>
@@ -130,12 +132,64 @@ document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>
  }
 }));
 const key='radioradar_manual_readings_v1';let readings=[];
-try{const found=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(found))readings=found.filter(x=>x&&Number.isFinite(x.mhz)&&typeof x.time==='string').slice(0,100);}catch(_e){}
-function persist(){try{localStorage.setItem(key,JSON.stringify(readings));}catch(_e){$('entries').title='Не удалось сохранить журнал';}}
-function render(){const root=$('entries');root.replaceChildren();if(!readings.length){const empty=document.createElement('span');empty.className='muted';empty.textContent='Записей пока нет.';root.appendChild(empty);return;}
-for(const x of readings){const row=document.createElement('div');row.className='entry';const title=document.createElement('strong');title.textContent=x.mhz.toFixed(4)+' МГц · '+x.mode;const sub=document.createElement('small');sub.textContent='Ручная запись · '+x.strength+' · '+new Date(x.time).toLocaleString('ru-RU');row.append(title,sub);root.appendChild(row);}}
-$('reading-form').addEventListener('submit',e=>{e.preventDefault();const mhz=Number($('mhz').value);if(!Number.isFinite(mhz)||mhz<.001||mhz>6000)return;readings.unshift({mhz,mode:$('mode').value,strength:$('strength').value,time:new Date().toISOString()});readings=readings.slice(0,100);persist();render();$('mhz').value='';});
-$('clear').addEventListener('click',()=>{if(!readings.length||!confirm('Удалить ручные наблюдения?'))return;readings=[];persist();render();});render();
+const modes=['Не определён','FM / NFM','AM','DMR','TETRA','APCO P25','NXDN','dPMR','Другой'];
+const storedLimit=200;
+function normalize(row,kind){
+ if(!row||typeof row!=='object')return null;
+ const rawFreq=row.mhz??row.frequency_mhz??row.frequency;
+ if(rawFreq===null||rawFreq===undefined||String(rawFreq).trim()==='')return null;
+ const mhz=Number(rawFreq);
+ if(!Number.isFinite(mhz)||mhz<0.001||mhz>6000)return null;
+ const when=row.time?new Date(row.time):new Date();
+ if(!Number.isFinite(when.getTime()))return null;
+ const mode=String(row.mode??'Не определён').slice(0,50);
+ const strength=String(row.strength??'Неизвестно').slice(0,70);
+ const source=String(row.source??(kind==='Импорт'?'Файл пользователя':'Ручная запись')).slice(0,100);
+ return {mhz,mode,strength,time:when.toISOString(),source,kind};
+}
+try{const saved=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(saved))readings=saved.slice(0,storedLimit).map(x=>normalize(x,x.kind==='Импорт'?'Импорт':'Ручная запись')).filter(Boolean);}catch(_e){}
+function persist(){try{localStorage.setItem(key,JSON.stringify(readings))}catch(_e){$('entries').title='Не удалось сохранить журнал';}}
+function render(){
+ const root=$('entries');root.replaceChildren();
+ if(!readings.length){const empty=document.createElement('span');empty.className='muted';empty.textContent='Записей пока нет.';root.appendChild(empty);return;}
+ for(const x of readings){
+  const row=document.createElement('div');row.className='entry';
+  const title=document.createElement('strong');title.textContent=x.mhz.toFixed(4)+' МГц · '+x.mode;
+  const sub=document.createElement('small');sub.textContent=x.kind+' · '+x.strength+' · '+new Date(x.time).toLocaleString('ru-RU')+' · Источник: '+x.source;
+  row.append(title,sub);root.appendChild(row);
+ }
+}
+$('reading-form').addEventListener('submit',e=>{
+ e.preventDefault();const record=normalize({mhz:$('mhz').value,mode:$('mode').value,strength:$('strength').value,time:new Date().toISOString()},'Ручная запись');
+ if(!record)return;
+ readings.unshift(record);readings=readings.slice(0,storedLimit);persist();render();$('mhz').value='';
+});
+$('clear').addEventListener('click',()=>{if(!readings.length||!confirm('Удалить весь журнал на этом устройстве?'))return;readings=[];persist();render();});
+$('import-btn').addEventListener('click',async()=>{
+ const file=$('import-file').files?.[0],report=$('import-status');
+ if(!file){report.textContent='Сначала выберите файл.';return;}
+ if(file.size>1024*1024){report.textContent='Файл превышает 1 МБ.';return;}
+ $('import-btn').disabled=true;
+ try{
+  const content=await file.text();let rows;
+  if(file.name.toLowerCase().endsWith('.json')){
+   const data=JSON.parse(content);rows=Array.isArray(data)?data:data?.measurements;
+   if(!Array.isArray(rows))throw Error('JSON должен содержать массив или measurements.');
+  }else{
+   rows=content.split(/\r?\n/).map(line=>line.trim()).filter(line=>line&&!line.startsWith('#')).map(line=>line.split(';').map(s=>s.trim()));
+   if(rows.length&&['mhz','frequency','частота'].includes(rows[0][0].toLowerCase()))rows.shift();
+   rows=rows.map(fields=>({mhz:fields[0],mode:fields[1],strength:fields[2],time:fields[3],source:fields[4]}));
+  }
+  if(rows.length>10000)throw Error('Слишком много строк (максимум 10000).');
+  const valid=rows.map(r=>normalize(r,'Импорт')).filter(Boolean);
+  if(!valid.length)throw Error('Нет корректных записей. Проверьте формат и частоты.');
+  readings=[...valid.reverse(),...readings].slice(0,storedLimit);
+  persist();render();
+  report.textContent='Импортировано '+valid.length+' из '+rows.length+' записей. В журнале хранится до '+storedLimit+'. Данные не проверены по эфиру.';
+ }catch(e){report.textContent='Импорт не выполнен: '+e.message;}
+ finally{$('import-btn').disabled=false;}
+});
+render();
 })();
 </script>
 </body>

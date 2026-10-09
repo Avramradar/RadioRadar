@@ -48,6 +48,16 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 <div id="history-status" class="muted" role="status">Архив не загружен.</div>
 <details style="margin-top:10px"><summary>Формат исторического файла</summary><p class="muted">TXT: time;frequency_mhz;power_dbm;source. Например: 2025-01-01T00:00:00Z;100;-100;lab-test. Первая строка может быть заголовком. JSON: массив объектов с полями time, frequency_mhz, power_dbm, source или объект {measurements: [...]}. Для анализа требуется минимум 9 последовательных измерений на одной частоте от одного источника. Сохранение на сервер не выполняется.</p></details></div>
 <div class="card" id="history-results" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
+<h2>Лабораторная проверка алгоритма</h2>
+<div class="card">
+ <div class="muted">Проверка на публичном научном CSV с измерениями GMSK. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
+ <label for="lab-file" class="muted" style="display:block;margin-top:12px">Исходный dataset.csv (до 2 МБ)</label>
+ <input id="lab-file" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;margin:9px 0">
+ <div class="toolbar"><button type="button" class="primary" id="lab-analyze">🧪 Проверить обнаружение</button><button type="button" id="lab-clear">Очистить результаты</button></div>
+ <div id="lab-status" class="muted" role="status">Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».</div>
+ <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">Детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
+</div>
+<div id="lab-results" class="card" aria-live="polite"><span class="muted">Лабораторных результатов пока нет.</span></div>
 <h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
 <section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — прямой переход к согласованной с оператором станции и каталоги других приёмников. Открытие WebSDR не подключает автоматическое измерение сигнала к RadioRadar.</div>
 <div class="receiver"><h3>📡 WebSDR RW6MIT / R6MX</h3><div class="meta">Ростов-на-Дону · онлайн-приёмник<br>Доступные на просмотренном интерфейсе диапазоны: <b>2 м</b> и <b>70 см</b>.<br>Режим: <b>ручной просмотр спектра и прослушивание</b>.<br>Автоматический поток измерений: <b>не подключён</b>.<br>Приёмник находится в Ростове-на-Дону, а не обязательно в вашей зоне на карте.</div><a class="link" href="http://87.117.25.250/" target="_blank" rel="noopener noreferrer">📻 Открыть WebSDR<span>Внешний сайт http://87.117.25.250/ — в некоторых версиях Telegram HTTP-ссылки открываются только во внешнем браузере.</span></a></div>
@@ -276,6 +286,78 @@ $('history-analyze').addEventListener('click',async()=>{
  finally{button.disabled=false;}
 });
 $('history-clear').addEventListener('click',()=>{historyClear();$('history-file').value='';historySay('Архив не загружен.');});
+// Offline controlled laboratory evaluation. No live reception, geolocation or network requests.
+const labRoot=$('lab-results');
+function labMessage(msg){$('lab-status').textContent=msg;}
+function labEmpty(){labRoot.replaceChildren();const el=document.createElement('span');el.className='muted';el.textContent='Лабораторных результатов пока нет.';labRoot.appendChild(el);}
+function labRow(parent,label,value){const div=document.createElement('div');div.className='entry';const b=document.createElement('strong');b.textContent=label;const small=document.createElement('small');small.textContent=value;div.append(b,small);parent.appendChild(div);}
+function labCsvCells(line){
+ const cells=[];let value='',inside=false;
+ for(let i=0;i<line.length;i++){
+  const c=line[i];if(c==='"'){
+   if(inside&&line[i+1]==='"'){value+='"';i++;}else inside=!inside;
+  }else if(c===','&&!inside){cells.push(value.trim());value='';}else value+=c;
+ }
+ if(inside)throw Error('Незакрытая кавычка в CSV.');
+ cells.push(value.trim());return cells;
+}
+function labParse(text){
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(line=>line.trim());
+ if(lines.length<15)throw Error('Слишком мало строк CSV.');
+ if(lines.length>30000)throw Error('Максимум 30 000 строк.');
+ const header=labCsvCells(lines.shift()).map(s=>s.toLowerCase().replace(/\s+/g,' ').trim());
+ const powerIndex=header.indexOf('power');const labelIndex=header.indexOf('signal presence (any)');
+ if(powerIndex<0||labelIndex<0)throw Error('Требуются столбцы Power и Signal presence (any).');
+ const rows=[];let rejected=0;
+ for(const line of lines){const values=labCsvCells(line);const power=Number(values[powerIndex]);const label=values[labelIndex];
+  if(values[powerIndex]===''||!Number.isFinite(power)||power<-200||power>100||(label!=='0'&&label!=='1')){rejected++;continue;}
+  rows.push({power,label:Number(label)});
+ }
+ if(rows.length<30)throw Error('Недостаточно корректных измерений.');
+ return {rows,rejected};
+}
+function labEvaluate(rows){
+ const training=rows.filter((_r,i)=>i%5!==0);
+ const testing=rows.filter((_r,i)=>i%5===0);
+ const noise=training.filter(r=>r.label===0).map(r=>r.power);
+ if(noise.length<15||!testing.some(r=>r.label===0)||!testing.some(r=>r.label===1))throw Error('Недостаточно примеров каждого класса для оценки.');
+ const baseline=histMedian(noise);
+ const mad=histMedian(noise.map(p=>Math.abs(p-baseline)));
+ const threshold=baseline+Math.max(3,6*1.4826*mad);
+ let tp=0,fp=0,tn=0,fn=0;
+ for(const r of testing){const predicted=r.power>threshold;
+  if(predicted&&r.label===1)tp++;else if(predicted)fp++;
+  else if(r.label===1)fn++;else tn++;
+ }
+ const precision=tp+fp?tp/(tp+fp):0;
+ const recall=tp+fn?tp/(tp+fn):0;
+ const specificity=tn+fp?tn/(tn+fp):0;
+ const f1=precision+recall?2*precision*recall/(precision+recall):0;
+ return {threshold,baseline,mad,train:training.length,test:testing.length,noise:noise.length,tp,fp,tn,fn,precision,recall,specificity,f1};
+}
+$('lab-analyze').addEventListener('click',async()=>{
+ const file=$('lab-file').files?.[0];if(!file){labMessage('Выберите dataset.csv.');return;}
+ if(file.size>2*1024*1024){labMessage('Максимальный размер CSV — 2 МБ.');return;}
+ const button=$('lab-analyze');button.disabled=true;labMessage('Проверяем локальный CSV…');
+ try{
+  const parsed=labParse(await file.text());const r=labEvaluate(parsed.rows);labRoot.replaceChildren();
+  const title=document.createElement('strong');title.textContent='Лабораторный тест выполнен';labRoot.appendChild(title);
+  const intro=document.createElement('p');intro.className='muted';intro.textContent='Прочитано '+parsed.rows.length+' строк; отброшено '+parsed.rejected+'. Обучение: '+r.train+'; проверка: '+r.test+'. Контрольный эксперимент, не данные о рациях.';labRoot.appendChild(intro);
+  labRow(labRoot,'Порог мощности',r.threshold.toFixed(2)+' dBm (фон '+r.baseline.toFixed(2)+' dBm)');
+  labRow(labRoot,'Верные обнаружения / TP',String(r.tp));
+  labRow(labRoot,'Ложные тревоги / FP',String(r.fp));
+  labRow(labRoot,'Верно определено отсутствие сигнала / TN',String(r.tn));
+  labRow(labRoot,'Пропущенные сигналы / FN',String(r.fn));
+  labRow(labRoot,'Точность положительных срабатываний (Precision)',(100*r.precision).toFixed(1)+'%');
+  labRow(labRoot,'Полнота обнаружений (Recall)',(100*r.recall).toFixed(1)+'%');
+  labRow(labRoot,'Специфичность',(100*r.specificity).toFixed(1)+'%');
+  labRow(labRoot,'F1',(100*r.f1).toFixed(1)+'%');
+  const warning=document.createElement('p');warning.className='muted';warning.textContent='Ограничение: тестируется один лабораторный сигнал GMSK при разделении по строкам, а не независимым сеансам. Результаты не переносятся на другие устройства, сигналы или места без отдельной проверки.';labRoot.appendChild(warning);
+  labMessage('Проверка выполнена локально. Файл никуда не отправлялся.');
+ }catch(e){labMessage('Ошибка лабораторной проверки: '+e.message);}
+ finally{button.disabled=false;}
+});
+$('lab-clear').addEventListener('click',()=>{$('lab-file').value='';labEmpty();labMessage('Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».');});
 render();
 })();
 </script>

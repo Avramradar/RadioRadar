@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
-<title>RadioRadar 3.2 — мониторинг радиоэфира</title>
+<title>RadioRadar 3.3 — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#101a2a;--panel:#17263b;--card:#1b2a41;--line:#334963;--text:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
@@ -48,15 +48,30 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 <div id="history-status" class="muted" role="status">Архив не загружен.</div>
 <details style="margin-top:10px"><summary>Формат исторического файла</summary><p class="muted">TXT: time;frequency_mhz;power_dbm;source. Например: 2025-01-01T00:00:00Z;100;-100;lab-test. Первая строка может быть заголовком. JSON: массив объектов с полями time, frequency_mhz, power_dbm, source или объект {measurements: [...]}. Для анализа требуется минимум 9 последовательных измерений на одной частоте от одного источника. Сохранение на сервер не выполняется.</p></details></div>
 <div class="card" id="history-results" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
-<h2>Лабораторная проверка алгоритма · 3.2</h2>
+<h2>Лабораторная проверка алгоритма · 3.3</h2>
 <div class="card">
- <div class="muted">Проверка на публичном научном CSV с измерениями GMSK. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
+ <div class="muted">Проверка лабораторного CSV с документированными метками присутствия сигнала. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
+ <details class="card" open style="margin-top:12px"><summary><b>📋 Паспорт лабораторного набора</b></summary>
+ <p class="muted">Заполняется по документации источника; неизвестное оставьте пустым. Метки двух передатчиков не являются метками «шум/сигнал».</p>
+ <div class="form-grid">
+ <label class="wide">Название набора<input id="meta-name" placeholder="Например: GMSK Spectrum Sensing"></label>
+ <label class="wide">Ссылка на публикацию<input id="meta-url" type="url" placeholder="https://zenodo.org/records/..."></label>
+ <label>Происхождение<select id="meta-origin"><option value="unknown">Неизвестно</option><option value="measured">Реальные измерения</option><option value="simulated">Симуляция</option></select></label>
+ <label>Единица мощности<select id="meta-unit"><option value="unknown">Неизвестна</option><option value="dbm">dBm, подтверждено</option><option value="relative">Другая / относительная</option></select></label>
+ <label class="wide">Оборудование<input id="meta-device" placeholder="USRP, RTL-SDR или неизвестно"></label>
+ <label class="wide">Условия измерения<input id="meta-conditions" placeholder="Лаборатория, диапазон, полоса..."></label>
+ <label class="wide">Как установлены эталонные метки<input id="meta-truth" placeholder="Внешнее управление передатчиком, журнал эксперимента..."></label>
+ <label>Дата сбора<input id="meta-date" placeholder="ГГГГ-ММ-ДД / неизвестно"></label>
+ <label>Сеансы независимы?<select id="meta-sessions"><option value="unknown">Неизвестно</option><option value="yes">Да, подтверждено</option><option value="no">Нет</option></select></label>
+ <label class="wide">Значение классов<select id="meta-classes"><option value="unknown">Не установлено / другие классы</option><option value="presence">Подтверждено: 0 = сигнала нет, 1 = сигнал есть</option><option value="device">0 и 1 = разные передатчики</option></select></label>
+ </div>
+ </details>
  <label for="lab-file" class="muted" style="display:block;margin-top:12px">Исходный dataset.csv (до 2 МБ)</label>
  <input id="lab-file" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;margin:9px 0">
- <div class="toolbar"><button type="button" class="primary" id="lab-analyze">🧪 Проверить обнаружение</button><button type="button" id="lab-clear">Очистить результаты</button></div>
+ <div class="toolbar"><button type="button" class="primary" id="lab-analyze">🧪 Проверить обнаружение</button><button type="button" id="lab-clear">Очистить результаты</button><button type="button" id="lab-export" disabled>⬇️ TXT-отчёт</button></div>
  <div id="lab-status" class="muted" role="status">Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».</div>
- <div class="note">Дополнительная проверка 3.2: пять воспроизводимых разбиений 80/20. Она оценивает разброс результатов внутри того же CSV, но не заменяет независимый эксперимент.</div>
- <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">Детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
+ <div class="note">Дополнительная проверка 3.3: пять воспроизводимых разбиений 80/20. Она оценивает разброс результатов внутри того же CSV, но не заменяет независимый эксперимент.</div>
+ <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">При отсутствии пригодного поля сеанса — детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
 </div>
 <div id="lab-results" class="card" aria-live="polite"><span class="muted">Лабораторных результатов пока нет.</span></div>
 <h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
@@ -289,6 +304,24 @@ $('history-analyze').addEventListener('click',async()=>{
 $('history-clear').addEventListener('click',()=>{historyClear();$('history-file').value='';historySay('Архив не загружен.');});
 // Offline controlled laboratory evaluation. No live reception, geolocation or network requests.
 const labRoot=$('lab-results');
+let labLastReport='';
+const passportFields=['meta-name','meta-url','meta-origin','meta-unit','meta-device','meta-conditions','meta-truth','meta-date','meta-sessions','meta-classes'];
+function labPassport(){const o={};for(const id of passportFields)o[id.slice(5)]=$(id).value.trim();return o;}
+function labPassportCheck(meta){
+ if(meta.classes!=='presence')throw Error('Нельзя оценивать обнаружение: сначала подтвердите по документации, что класс 0 означает отсутствие сигнала, а 1 — наличие.');
+ if(meta.unit!=='dbm')throw Error('Нужно документально подтвердить единицу измерения dBm для столбца Power. Неизвестные и относительные единицы не пересчитываются автоматически.');
+ if(meta.url&&!/^https:\/\//i.test(meta.url))throw Error('Ссылка на публикацию должна начинаться с https://.');
+}
+function labPassportLines(meta){return [
+ 'Название: '+(meta.name||'Неизвестно'), 'Источник: '+(meta.url||'Неизвестно'),
+ 'Происхождение: '+({measured:'реальные измерения',simulated:'симуляция',unknown:'неизвестно'}[meta.origin]),
+ 'Единица: '+({dbm:'dBm, указано пользователем',relative:'относительная/иная',unknown:'неизвестно'}[meta.unit]),
+ 'Оборудование: '+(meta.device||'Неизвестно'),'Условия: '+(meta.conditions||'Неизвестно'),
+ 'Основание меток: '+(meta.truth||'Неизвестно'),'Дата сбора: '+(meta.date||'Неизвестно'),
+ 'Независимые сеансы: '+({yes:'подтверждены пользователем',no:'нет',unknown:'неизвестно'}[meta.sessions]),
+ 'Классы: '+({presence:'0 = отсутствие, 1 = присутствие; указано пользователем',device:'два передатчика',unknown:'неизвестно'}[meta.classes])
+];}
+
 function labMessage(msg){$('lab-status').textContent=msg;}
 function labEmpty(){labRoot.replaceChildren();const el=document.createElement('span');el.className='muted';el.textContent='Лабораторных результатов пока нет.';labRoot.appendChild(el);}
 function labRow(parent,label,value){const div=document.createElement('div');div.className='entry';const b=document.createElement('strong');b.textContent=label;const small=document.createElement('small');small.textContent=value;div.append(b,small);parent.appendChild(div);}
@@ -308,14 +341,15 @@ function labParse(text){
  if(lines.length>30000)throw Error('Максимум 30 000 строк.');
  const header=labCsvCells(lines.shift()).map(s=>s.toLowerCase().replace(/\s+/g,' ').trim());
  const powerIndex=header.indexOf('power');const labelIndex=header.indexOf('signal presence (any)');
+ const sessionIndex=['session_id','session','run_id','campaign_id','measurement_session'].map(n=>header.indexOf(n)).find(i=>i>=0);
  if(powerIndex<0||labelIndex<0)throw Error('Требуются столбцы Power и Signal presence (any).');
  const rows=[];let rejected=0;
  for(const line of lines){const values=labCsvCells(line);const power=Number(values[powerIndex]);const label=values[labelIndex];
   if(values[powerIndex]===''||!Number.isFinite(power)||power<-200||power>100||(label!=='0'&&label!=='1')){rejected++;continue;}
-  rows.push({power,label:Number(label)});
+  rows.push({power,label:Number(label),session:sessionIndex===undefined?null:(values[sessionIndex]??'').trim()});
  }
  if(rows.length<30)throw Error('Недостаточно корректных измерений.');
- return {rows,rejected};
+ return {rows,rejected,hasSession:sessionIndex!==undefined};
 }
 function labScore(training,testing){
  const noise=training.filter(r=>r.label===0).map(r=>r.power);
@@ -336,6 +370,15 @@ function labScore(training,testing){
 }
 function labEvaluate(rows){
  return labScore(rows.filter((_r,i)=>i%5!==0),rows.filter((_r,i)=>i%5===0));
+}
+// Session-based 80/20 holdout: group IDs never cross the train/test boundary.
+function labSessionEvaluate(rows){
+ const ids=[...new Set(rows.map(r=>r.session))].sort();
+ if(ids.length<5||ids.some(id=>!id))throw Error('Поле сеанса отсутствует, пустое или содержит меньше пяти сеансов.');
+ const testIds=new Set(ids.filter((_id,i)=>i%5===0));
+ const train=rows.filter(r=>!testIds.has(r.session)),test=rows.filter(r=>testIds.has(r.session));
+ if(!train.some(r=>r.label===0)||!train.some(r=>r.label===1)||!test.some(r=>r.label===0)||!test.some(r=>r.label===1))throw Error('Разделение по сеансам не содержит оба класса в каждой части. Нужен другой документированный набор сеансов.');
+ return {score:labScore(train,test),sessions:ids.length,testSessions:testIds.size};
 }
 // Five reproducible stratified 80/20 splits of the same laboratory file.
 // This measures split variability, not generalisation to other receivers/sessions.
@@ -362,29 +405,72 @@ function labRange(values){return (100*Math.min(...values)).toFixed(1)+'–'+(100
 $('lab-analyze').addEventListener('click',async()=>{
  const file=$('lab-file').files?.[0];if(!file){labMessage('Выберите dataset.csv.');return;}
  if(file.size>2*1024*1024){labMessage('Максимальный размер CSV — 2 МБ.');return;}
- const button=$('lab-analyze');button.disabled=true;labMessage('Проверяем локальный CSV…');
+ const button=$('lab-analyze');button.disabled=true;$('lab-export').disabled=true;labLastReport='';labMessage('Проверяем локальный CSV…');
  try{
-  const parsed=labParse(await file.text());const r=labEvaluate(parsed.rows);const repeated=labRepeat(parsed.rows);labRoot.replaceChildren();
+  const meta=labPassport();labPassportCheck(meta);
+  const parsed=labParse(await file.text());
+  const negatives=parsed.rows.filter(r=>r.label===0).length,positives=parsed.rows.length-negatives;
+  if(!negatives||!positives)throw Error('В выборке должен присутствовать каждый из классов 0 и 1.');
+  const hasGroups=parsed.hasSession;
+  const sessionResult=hasGroups?labSessionEvaluate(parsed.rows):null;
+  const r=sessionResult?sessionResult.score:labEvaluate(parsed.rows);
+  const repeated=hasGroups?null:labRepeat(parsed.rows);
+  const splitting=hasGroups?'По сеансам (без пересечений)':'По строкам (контрольная проверка 3.2)';
+  const independent=Boolean(hasGroups&&meta.sessions==='yes');
+  const independentText=independent?'Проверка разделена по независимым сеансам согласно паспорту пользователя. Внешняя независимая валидация на другом наборе не проводилась.':'Независимая валидация не проведена.';
+  labRoot.replaceChildren();
   const title=document.createElement('strong');title.textContent='Лабораторный тест выполнен';labRoot.appendChild(title);
-  const intro=document.createElement('p');intro.className='muted';intro.textContent='Прочитано '+parsed.rows.length+' строк; отброшено '+parsed.rejected+'. Обучение: '+r.train+'; проверка: '+r.test+'. Контрольный эксперимент, не данные о рациях.';labRoot.appendChild(intro);
+  const intro=document.createElement('p');intro.className='muted';intro.textContent='Принято '+parsed.rows.length+' строк; отклонено '+parsed.rejected+'. Класс 0: '+negatives+', класс 1: '+positives+'. Обучение: '+r.train+', тест: '+r.test+'.';labRoot.appendChild(intro);
+  labRow(labRoot,'Разделение',splitting);
+  if(sessionResult)labRow(labRoot,'Сеансы','Всего '+sessionResult.sessions+'; тестовых '+sessionResult.testSessions);
   labRow(labRoot,'Порог мощности',r.threshold.toFixed(2)+' dBm (фон '+r.baseline.toFixed(2)+' dBm)');
   labRow(labRoot,'Верные обнаружения / TP',String(r.tp));
   labRow(labRoot,'Ложные тревоги / FP',String(r.fp));
-  labRow(labRoot,'Верно определено отсутствие сигнала / TN',String(r.tn));
+  labRow(labRoot,'Верно определено отсутствие / TN',String(r.tn));
   labRow(labRoot,'Пропущенные сигналы / FN',String(r.fn));
-  labRow(labRoot,'Точность положительных срабатываний (Precision)',(100*r.precision).toFixed(1)+'%');
-  labRow(labRoot,'Полнота обнаружений (Recall)',(100*r.recall).toFixed(1)+'%');
+  labRow(labRoot,'Precision',(100*r.precision).toFixed(1)+'%');
+  labRow(labRoot,'Recall',(100*r.recall).toFixed(1)+'%');
   labRow(labRoot,'Специфичность',(100*r.specificity).toFixed(1)+'%');
   labRow(labRoot,'F1',(100*r.f1).toFixed(1)+'%');
-  labRow(labRoot,'Пять разбиений: Recall (минимум–максимум)',labRange(repeated.map(v=>v.recall)));
-  labRow(labRoot,'Пять разбиений: Precision (минимум–максимум)',labRange(repeated.map(v=>v.precision)));
-  labRow(labRoot,'Пять разбиений: F1 (минимум–максимум)',labRange(repeated.map(v=>v.f1)));
-  const warning=document.createElement('p');warning.className='muted';warning.textContent='Ограничение: все шесть проверок относятся к одному лабораторному CSV. Случайные разбиения по строкам не являются независимыми сеансами, доверительными интервалами или доказательством работы на новых устройствах. Результаты не переносятся на другие устройства, сигналы или места без отдельной проверки.';labRoot.appendChild(warning);
-  labMessage('Проверка выполнена локально. Файл никуда не отправлялся.');
- }catch(e){labMessage('Ошибка лабораторной проверки: '+e.message);}
+  if(repeated){
+   labRow(labRoot,'Пять разбиений: Recall (минимум–максимум)',labRange(repeated.map(v=>v.recall)));
+   labRow(labRoot,'Пять разбиений: Precision (минимум–максимум)',labRange(repeated.map(v=>v.precision)));
+   labRow(labRoot,'Пять разбиений: F1 (минимум–максимум)',labRange(repeated.map(v=>v.f1)));
+  }
+  const warning=document.createElement('p');warning.className='muted';warning.textContent=independentText+' Достоверность паспорта зависит от предоставленной документации. Ноль FP в выборке не означает отсутствие риска ложных тревог. Пять разбиений не являются доверительным интервалом. Результат не позволяет локализовать передачи.';labRoot.appendChild(warning);
+  labLastReport=[
+   'RadioRadar 3.3 — локальный лабораторный отчёт',
+   'Дата анализа: '+new Date().toISOString(), 'Файл: '+file.name,
+   '', 'ПАСПОРТ',...labPassportLines(meta),
+   '', 'ПРОВЕРКА', 'Принято строк: '+parsed.rows.length,'Отклонено: '+parsed.rejected,
+   'Класс 0: '+negatives,'Класс 1: '+positives,'Разделение: '+splitting,
+   'Обучение: '+r.train,'Тест: '+r.test,
+   'Порог: '+r.threshold.toFixed(4)+' dBm','Фон: '+r.baseline.toFixed(4)+' dBm',
+   'TP: '+r.tp,'FP: '+r.fp,'TN: '+r.tn,'FN: '+r.fn,
+   'Precision: '+(100*r.precision).toFixed(2)+'%',
+   'Recall: '+(100*r.recall).toFixed(2)+'%',
+   'Specificity: '+(100*r.specificity).toFixed(2)+'%',
+   'F1: '+(100*r.f1).toFixed(2)+'%',
+   ...(sessionResult?['Всего сеансов: '+sessionResult.sessions,'Тестовых сеансов: '+sessionResult.testSessions]:[]),
+   ...(repeated?['Пять разбиений (НЕ доверительный интервал):','Recall: '+labRange(repeated.map(v=>v.recall)),'Precision: '+labRange(repeated.map(v=>v.precision)),'F1: '+labRange(repeated.map(v=>v.f1))]:[]),
+   '', 'ОГРАНИЧЕНИЯ',independentText,'Метки и единицы подтверждены только заявлением пользователя.','Ноль FP не гарантирует нулевую частоту ложных тревог на новых данных.','Нет подтверждения обнаружения или местоположения сторонних раций.','Данные обработаны локально.'
+  ].join('\n');
+  $('lab-export').disabled=false;
+  labMessage('Проверка выполнена локально. TXT-отчёт готов для сохранения.');
+ }catch(e){labRoot.replaceChildren();labEmpty();labMessage('Проверка не выполнена: '+e.message);}
  finally{button.disabled=false;}
 });
-$('lab-clear').addEventListener('click',()=>{$('lab-file').value='';labEmpty();labMessage('Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».');});
+$('lab-export').addEventListener('click',()=>{
+ if(!labLastReport)return;
+ const blob=new Blob(['\uFEFF'+labLastReport],{type:'text/plain;charset=utf-8'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');
+ a.href=url;a.download='RadioRadar_3_3_lab_report.txt';document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),10000);
+});
+$('lab-clear').addEventListener('click',()=>{
+ $('lab-file').value='';labLastReport='';$('lab-export').disabled=true;labEmpty();
+ labMessage('Выберите исходный dataset.csv, заполните паспорт и нажмите «Проверить обнаружение».');
+});
 render();
 })();
 </script>

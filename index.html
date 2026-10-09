@@ -40,13 +40,21 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 </section>
 <section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых источников измерений</span><strong>0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong>0</strong></div></div><div class="note">Внешняя станция WebSDR доступна для ручного наблюдения в разделе SDR, но автоматические измерения из неё не поступают. Отсутствие данных не означает отсутствие передач. Записи ниже добавляются вручную.</div><h2>Импорт измерений TXT / JSON</h2>
 <div class="card"><label for="import-file" class="muted">Выберите локальный файл измерений (до 1 МБ)</label><input id="import-file" type="file" accept=".txt,.json,text/plain,application/json" style="display:block;width:100%;margin:10px 0"><button type="button" id="import-btn">📥 Импортировать</button><div id="import-status" class="muted" role="status" style="margin-top:10px">Данные импортируются только по вашему выбору, не считываются с WebSDR автоматически.</div><details style="margin-top:10px"><summary>Формат файлов</summary><p class="muted">JSON: массив записей или объект с полем measurements. Каждая запись: mhz (МГц), mode, strength, time (ISO 8601), source.</p><p class="muted">TXT: одна запись в строке, поля разделены точкой с запятой: частота МГц; тип; уровень; время ISO 8601; источник. Первая строка может содержать заголовки mhz;mode;strength;time;source. Пример: 145.500;FM / NFM;-81.4 dBm;2026-10-09T10:00:00Z;Мой приёмник.</p><p class="muted">Импортированные записи обозначаются отдельно от ручных. Источник файла указывается как предоставленный пользователем, а не проверенный приложением.</p></details></div>
+<h2>Исторические аномалии спектра</h2>
+<div class="card"><div class="muted">Отдельный анализатор архивных измерений мощности (dBm). Не сканирует эфир и не определяет тип источника. Используйте обезличенные данные с задержкой не меньше 24 часов. Результаты относятся только к указанному в файле измерительному источнику, не к выбранному квадрату карты.</div>
+<label class="muted" for="history-file" style="display:block;margin-top:12px">Файл исторических измерений (TXT / JSON, до 1 МБ)</label>
+<input id="history-file" type="file" accept=".txt,.json,text/plain,application/json" style="display:block;width:100%;margin:9px 0">
+<div class="toolbar"><button id="history-analyze" type="button" class="primary">📊 Анализировать архив</button><button id="history-clear" type="button">Очистить результат</button></div>
+<div id="history-status" class="muted" role="status">Архив не загружен.</div>
+<details style="margin-top:10px"><summary>Формат исторического файла</summary><p class="muted">TXT: time;frequency_mhz;power_dbm;source. Например: 2025-01-01T00:00:00Z;100;-100;lab-test. Первая строка может быть заголовком. JSON: массив объектов с полями time, frequency_mhz, power_dbm, source или объект {measurements: [...]}. Для анализа требуется минимум 9 последовательных измерений на одной частоте от одного источника. Сохранение на сервер не выполняется.</p></details></div>
+<div class="card" id="history-results" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
 <h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
 <section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — прямой переход к согласованной с оператором станции и каталоги других приёмников. Открытие WebSDR не подключает автоматическое измерение сигнала к RadioRadar.</div>
 <div class="receiver"><h3>📡 WebSDR RW6MIT / R6MX</h3><div class="meta">Ростов-на-Дону · онлайн-приёмник<br>Доступные на просмотренном интерфейсе диапазоны: <b>2 м</b> и <b>70 см</b>.<br>Режим: <b>ручной просмотр спектра и прослушивание</b>.<br>Автоматический поток измерений: <b>не подключён</b>.<br>Приёмник находится в Ростове-на-Дону, а не обязательно в вашей зоне на карте.</div><a class="link" href="http://87.117.25.250/" target="_blank" rel="noopener noreferrer">📻 Открыть WebSDR<span>Внешний сайт http://87.117.25.250/ — в некоторых версиях Telegram HTTP-ссылки открываются только во внешнем браузере.</span></a></div>
 <a class="link" href="https://rx.linkfanel.net/" target="_blank" rel="noopener noreferrer">🌍 KiwiSDR Map<span>Карта доступных удалённых приёмников, многие работают преимущественно на КВ.</span></a><a class="link" href="https://www.receiverbook.de/" target="_blank" rel="noopener noreferrer">📍 ReceiverBook<span>Справочник общедоступных онлайн-приёмников.</span></a><a class="link" href="http://websdr.org/" target="_blank" rel="noopener noreferrer">🎧 WebSDR<span>Каталог приёмников, доступность зависит от операторов.</span></a>
 <div class="card"><h2>Автоматическое обнаружение</h2><div class="muted">Для автоматического отображения радиопередач необходим согласованный машинный интерфейс измерений (частота, уровень, время). У публичной страницы этого приёмника такой интерфейс пока не подтверждён. Приложение не пытается обращаться к внутренним или закрытым интерфейсам сервера.</div></div></div></section>
 </main>
-<footer>RadioRadar · бесплатный интерфейс. Карта © OpenStreetMap contributors. Не предназначен для скрытого отслеживания людей.</footer>
+<footer>RadioRadar · исторический офлайн-анализ аномалий · бесплатный интерфейс. Карта © OpenStreetMap contributors. Не предназначен для скрытого отслеживания людей.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (()=>{'use strict';
@@ -189,6 +197,85 @@ $('import-btn').addEventListener('click',async()=>{
  }catch(e){report.textContent='Импорт не выполнен: '+e.message;}
  finally{$('import-btn').disabled=false;}
 });
+// Offline-only retrospective spectrum analytics; no networking, location or automatic live detection.
+const historyResults=$('history-results');
+function historySay(value){$('history-status').textContent=value;}
+function historyClear(){historyResults.replaceChildren();const e=document.createElement('span');e.className='muted';e.textContent='Результатов пока нет.';historyResults.appendChild(e);}
+function histMedian(values){const sorted=[...values].sort((a,b)=>a-b);const n=sorted.length;return n%2?sorted[(n-1)/2]:(sorted[n/2-1]+sorted[n/2])/2;}
+function histNormalize(x){
+ if(!x||typeof x!=='object')return null;
+ const t=Date.parse(x.time??'');
+ const f=Number(x.frequency_mhz??x.mhz);
+ const power=Number(x.power_dbm);
+ const source=String(x.source??'').trim().slice(0,80);
+ if(!Number.isFinite(t)||!Number.isFinite(f)||!Number.isFinite(power)||!source||f<=0||f>6000||power < -180||power>100)return null;
+ // Only historical records, never classify recent/ongoing events.
+ if(t>Date.now()-24*60*60*1000)return null;
+ return {t,f,power,source};
+}
+function loadHistoryText(name,contents){
+ if(name.toLowerCase().endsWith('.json')){
+  const obj=JSON.parse(contents);const arr=Array.isArray(obj)?obj:obj?.measurements;
+  if(!Array.isArray(arr))throw Error('JSON должен содержать массив measurements.');
+  return arr;
+ }
+ return contents.split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!l.startsWith('#')).filter(l=>!/^time\s*;/i.test(l)).map(line=>{
+  const [time,frequency_mhz,power_dbm,source]=line.split(';').map(v=>v.trim());
+  return {time,frequency_mhz,power_dbm,source};
+ });
+}
+function historyAnalyze(records){
+ // Group by exact logged frequency and receiver ID; do not create location conclusions.
+ const groups=new Map();
+ for(const r of records){const key=r.source+'|'+r.f.toFixed(4);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(r);}
+ const anomalies=[];let enough=0;
+ for(const rows of groups.values()){
+  rows.sort((a,b)=>a.t-b.t);
+  if(rows.length<9)continue;
+  enough++;
+  for(let i=8;i<rows.length;i++){
+   const baseline=rows.slice(Math.max(0,i-32),i).map(r=>r.power);
+   const median=histMedian(baseline);
+   const mad=histMedian(baseline.map(p=>Math.abs(p-median)));
+   const deviation=rows[i].power-median;
+   // Conservative relative score with floor; not a probability of a radio transmission.
+   const threshold=Math.max(8,3*1.4826*mad);
+   if(deviation>threshold)anomalies.push({...rows[i],median,deviation,threshold});
+  }
+ }
+ anomalies.sort((a,b)=>b.t-a.t);
+ return {anomalies,groups:groups.size,enough};
+}
+$('history-analyze').addEventListener('click',async()=>{
+ const file=$('history-file').files?.[0];
+ if(!file){historySay('Выберите архивный файл.');return;}
+ if(file.size>1024*1024){historySay('Максимальный размер архива — 1 МБ.');return;}
+ const button=$('history-analyze');button.disabled=true;
+ try{
+  const raw=loadHistoryText(file.name,await file.text());
+  if(raw.length>20000)throw Error('Максимум 20 000 строк.');
+  const records=raw.map(histNormalize).filter(Boolean);
+  if(!records.length)throw Error('Нет допустимых исторических измерений старше 24 часов.');
+  const result=historyAnalyze(records);
+  historyResults.replaceChildren();
+  const title=document.createElement('strong');
+  title.textContent='Исторических аномалий: '+result.anomalies.length;
+  historyResults.appendChild(title);
+  const about=document.createElement('p');about.className='muted';
+  about.textContent='Принято '+records.length+' из '+raw.length+' строк. Групп источник/частота: '+result.groups+', с достаточным фоном: '+result.enough+'. Метод: отклонение мощности выше медианного фона с устойчивым порогом. Не подтверждает наличие рации и не определяет местоположение.';
+  historyResults.appendChild(about);
+  for(const x of result.anomalies.slice(0,30)){
+   const div=document.createElement('div');div.className='entry';
+   const head=document.createElement('strong');head.textContent=new Date(x.t).toLocaleString('ru-RU')+' · архивное отклонение';
+   const sub=document.createElement('small');sub.textContent='Источник: '+x.source+' · превышение фона: +'+x.deviation.toFixed(1)+' dB · мощность: '+x.power.toFixed(1)+' dBm';
+   div.append(head,sub);historyResults.appendChild(div);
+  }
+  if(result.anomalies.length>30){const m=document.createElement('p');m.className='muted';m.textContent='Показаны первые 30 результатов из '+result.anomalies.length+'.';historyResults.appendChild(m);}
+  historySay('Архив проанализирован локально. Данные не передавались на сервер и не помещались на карту.');
+ }catch(e){historySay('Ошибка анализа: '+e.message);}
+ finally{button.disabled=false;}
+});
+$('history-clear').addEventListener('click',()=>{historyClear();$('history-file').value='';historySay('Архив не загружен.');});
 render();
 })();
 </script>

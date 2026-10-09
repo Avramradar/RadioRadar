@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
-<title>RadioRadar 3.3 — мониторинг радиоэфира</title>
+<title>RadioRadar 3.4 — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#101a2a;--panel:#17263b;--card:#1b2a41;--line:#334963;--text:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
@@ -48,11 +48,13 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 <div id="history-status" class="muted" role="status">Архив не загружен.</div>
 <details style="margin-top:10px"><summary>Формат исторического файла</summary><p class="muted">TXT: time;frequency_mhz;power_dbm;source. Например: 2025-01-01T00:00:00Z;100;-100;lab-test. Первая строка может быть заголовком. JSON: массив объектов с полями time, frequency_mhz, power_dbm, source или объект {measurements: [...]}. Для анализа требуется минимум 9 последовательных измерений на одной частоте от одного источника. Сохранение на сервер не выполняется.</p></details></div>
 <div class="card" id="history-results" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
-<h2>Лабораторная проверка алгоритма · 3.3</h2>
+<h2>Лабораторная проверка алгоритма · 3.4</h2>
 <div class="card">
- <div class="muted">Проверка лабораторного CSV с документированными метками присутствия сигнала. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
+ <div class="muted">Проверка лабораторного CSV с заявленными метками присутствия сигнала. Соответствие выбранного файла первоисточнику автоматически не удостоверяется. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
  <details class="card" open style="margin-top:12px"><summary><b>📋 Паспорт лабораторного набора</b></summary>
  <p class="muted">Заполняется по документации источника; неизвестное оставьте пустым. Метки двух передатчиков не являются метками «шум/сигнал».</p>
+ <div class="toolbar"><button type="button" id="lab-gmsk-preset">📚 Заполнить по Zenodo: GMSK</button></div>
+ <div id="lab-preset-status" class="note" role="status">Шаблон паспорта заполнит документированные сведения о научном наборе. Содержимое выбранного CSV и независимость измерительных сеансов автоматически не подтверждаются.</div>
  <div class="form-grid">
  <label class="wide">Название набора<input id="meta-name" placeholder="Например: GMSK Spectrum Sensing"></label>
  <label class="wide">Ссылка на публикацию<input id="meta-url" type="url" placeholder="https://zenodo.org/records/..."></label>
@@ -70,7 +72,7 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
  <input id="lab-file" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;margin:9px 0">
  <div class="toolbar"><button type="button" class="primary" id="lab-analyze">🧪 Проверить обнаружение</button><button type="button" id="lab-clear">Очистить результаты</button><button type="button" id="lab-export" disabled>⬇️ TXT-отчёт</button></div>
  <div id="lab-status" class="muted" role="status">Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».</div>
- <div class="note">Дополнительная проверка 3.3: пять воспроизводимых разбиений 80/20. Она оценивает разброс результатов внутри того же CSV, но не заменяет независимый эксперимент.</div>
+ <div class="note">Дополнительная проверка 3.4: пять воспроизводимых разбиений 80/20. Она оценивает разброс результатов внутри того же CSV, но не заменяет независимый эксперимент.</div>
  <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">При отсутствии пригодного поля сеанса — детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
 </div>
 <div id="lab-results" class="card" aria-live="polite"><span class="muted">Лабораторных результатов пока нет.</span></div>
@@ -305,8 +307,16 @@ $('history-clear').addEventListener('click',()=>{historyClear();$('history-file'
 // Offline controlled laboratory evaluation. No live reception, geolocation or network requests.
 const labRoot=$('lab-results');
 let labLastReport='';
+const gmskSource='https://zenodo.org/records/10021228';
+const gmskDocumented={name:'GMSK Spectrum Sensing for Machine Learning',url:gmskSource,origin:'measured',unit:'dbm',device:'USRP, GNU Radio',conditions:'Лабораторный эксперимент GMSK; 2100 МГц; приёмная полоса 40 МГц; анализ одного канала',truth:'По документации Zenodo: 0 — шум (передача отсутствует), 1 — сигнал передаётся',date:'2022-10-26',sessions:'unknown',classes:'presence'};
 const passportFields=['meta-name','meta-url','meta-origin','meta-unit','meta-device','meta-conditions','meta-truth','meta-date','meta-sessions','meta-classes'];
 function labPassport(){const o={};for(const id of passportFields)o[id.slice(5)]=$(id).value.trim();return o;}
+function labGmskSourceMatch(meta){return ['name','url','origin','unit','device','conditions','truth','date','classes'].every(k=>meta[k]===gmskDocumented[k]);}
+$('lab-gmsk-preset').addEventListener('click',()=>{
+ if(passportFields.some(id=>$(id).value&&$(id).value!=='unknown')&&!confirm('Заменить заполненные поля данными публикации GMSK на Zenodo?'))return;
+ for(const [key,value] of Object.entries(gmskDocumented))$('meta-'+key).value=value;
+ $('lab-preset-status').textContent='Паспорт заполнен по публикации Zenodo. Подтверждена документация источника, но НЕ тождество выбранного CSV, независимость сеансов или внешняя применимость модели.';
+});
 function labPassportCheck(meta){
  if(meta.classes!=='presence')throw Error('Нельзя оценивать обнаружение: сначала подтвердите по документации, что класс 0 означает отсутствие сигнала, а 1 — наличие.');
  if(meta.unit!=='dbm')throw Error('Нужно документально подтвердить единицу измерения dBm для столбца Power. Неизвестные и относительные единицы не пересчитываются автоматически.');
@@ -319,7 +329,9 @@ function labPassportLines(meta){return [
  'Оборудование: '+(meta.device||'Неизвестно'),'Условия: '+(meta.conditions||'Неизвестно'),
  'Основание меток: '+(meta.truth||'Неизвестно'),'Дата сбора: '+(meta.date||'Неизвестно'),
  'Независимые сеансы: '+({yes:'подтверждены пользователем',no:'нет',unknown:'неизвестно'}[meta.sessions]),
- 'Классы: '+({presence:'0 = отсутствие, 1 = присутствие; указано пользователем',device:'два передатчика',unknown:'неизвестно'}[meta.classes])
+ 'Классы: '+({presence:'0 = отсутствие, 1 = присутствие; указано пользователем',device:'два передатчика',unknown:'неизвестно'}[meta.classes]),
+  'Паспорт совпадает с подтверждёнными сведениями Zenodo: '+(labGmskSourceMatch(meta)?'да, метаданные источника':'нет / пользовательские сведения'),
+  'Идентичность CSV оригиналу Zenodo: не проверена; независимость сеансов: '+(meta.sessions==='unknown'?'неизвестна':'заявлена пользователем')
 ];}
 
 function labMessage(msg){$('lab-status').textContent=msg;}
@@ -421,7 +433,8 @@ $('lab-analyze').addEventListener('click',async()=>{
   labRoot.replaceChildren();
   const title=document.createElement('strong');title.textContent='Лабораторный тест выполнен';labRoot.appendChild(title);
   const intro=document.createElement('p');intro.className='muted';intro.textContent='Принято '+parsed.rows.length+' строк; отклонено '+parsed.rejected+'. Класс 0: '+negatives+', класс 1: '+positives+'. Обучение: '+r.train+', тест: '+r.test+'.';labRoot.appendChild(intro);
-  labRow(labRoot,'Разделение',splitting);
+  labRow(labRoot,'Документация набора',labGmskSourceMatch(meta)?'Паспорт совпадает с описанием Zenodo. Загруженный CSV отдельно не аутентифицирован.':'Паспорт не сопоставлен полностью с известным источником; сведения заявлены пользователем.');
+   labRow(labRoot,'Разделение',splitting);
   if(sessionResult)labRow(labRoot,'Сеансы','Всего '+sessionResult.sessions+'; тестовых '+sessionResult.testSessions);
   labRow(labRoot,'Порог мощности',r.threshold.toFixed(2)+' dBm (фон '+r.baseline.toFixed(2)+' dBm)');
   labRow(labRoot,'Верные обнаружения / TP',String(r.tp));
@@ -437,9 +450,9 @@ $('lab-analyze').addEventListener('click',async()=>{
    labRow(labRoot,'Пять разбиений: Precision (минимум–максимум)',labRange(repeated.map(v=>v.precision)));
    labRow(labRoot,'Пять разбиений: F1 (минимум–максимум)',labRange(repeated.map(v=>v.f1)));
   }
-  const warning=document.createElement('p');warning.className='muted';warning.textContent=independentText+' Достоверность паспорта зависит от предоставленной документации. Ноль FP в выборке не означает отсутствие риска ложных тревог. Пять разбиений не являются доверительным интервалом. Результат не позволяет локализовать передачи.';labRoot.appendChild(warning);
+  const warning=document.createElement('p');warning.className='muted';warning.textContent=independentText+' '+(labGmskSourceMatch(meta)?'Описание паспорта совпадает с данными Zenodo; сам загруженный файл не аутентифицирован.':'Единицы и метки для произвольного CSV требуют документации.')+' Ноль FP не исключает ложные тревоги на других данных. Пять разбиений не доверительный интервал. Результат не локализует передачи.';labRoot.appendChild(warning);
   labLastReport=[
-   'RadioRadar 3.3 — локальный лабораторный отчёт',
+   'RadioRadar 3.4 — локальный лабораторный отчёт',
    'Дата анализа: '+new Date().toISOString(), 'Файл: '+file.name,
    '', 'ПАСПОРТ',...labPassportLines(meta),
    '', 'ПРОВЕРКА', 'Принято строк: '+parsed.rows.length,'Отклонено: '+parsed.rejected,
@@ -453,7 +466,7 @@ $('lab-analyze').addEventListener('click',async()=>{
    'F1: '+(100*r.f1).toFixed(2)+'%',
    ...(sessionResult?['Всего сеансов: '+sessionResult.sessions,'Тестовых сеансов: '+sessionResult.testSessions]:[]),
    ...(repeated?['Пять разбиений (НЕ доверительный интервал):','Recall: '+labRange(repeated.map(v=>v.recall)),'Precision: '+labRange(repeated.map(v=>v.precision)),'F1: '+labRange(repeated.map(v=>v.f1))]:[]),
-   '', 'ОГРАНИЧЕНИЯ',independentText,'Метки и единицы подтверждены только заявлением пользователя.','Ноль FP не гарантирует нулевую частоту ложных тревог на новых данных.','Нет подтверждения обнаружения или местоположения сторонних раций.','Данные обработаны локально.'
+   '', 'ОГРАНИЧЕНИЯ',independentText,(labGmskSourceMatch(meta)?'Документация GMSK подтверждает значения единиц и классов, но происхождение загруженного CSV не проверено.':'Метки и единицы в этом CSV подтверждены только заявлением пользователя.'),'Ноль FP не гарантирует нулевую частоту ложных тревог на новых данных.','Нет подтверждения обнаружения или местоположения сторонних раций.','Данные обработаны локально.'
   ].join('\n');
   $('lab-export').disabled=false;
   labMessage('Проверка выполнена локально. TXT-отчёт готов для сохранения.');
@@ -464,7 +477,7 @@ $('lab-export').addEventListener('click',()=>{
  if(!labLastReport)return;
  const blob=new Blob(['\uFEFF'+labLastReport],{type:'text/plain;charset=utf-8'});
  const url=URL.createObjectURL(blob);const a=document.createElement('a');
- a.href=url;a.download='RadioRadar_3_3_lab_report.txt';document.body.appendChild(a);a.click();a.remove();
+ a.href=url;a.download='RadioRadar_3_4_lab_report.txt';document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),10000);
 });
 $('lab-clear').addEventListener('click',()=>{

@@ -2,52 +2,115 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
 <title>RadioRadar — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoY2a4luXtkbIuLZtY8=" crossorigin="anonymous">
 <style>
-:root{color-scheme:dark;--bg:#101a2a;--card:#1b2a41;--line:#334963;--txt:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--txt);font:15px system-ui,-apple-system,Arial,sans-serif}header{padding:17px 16px 10px;background:#17263b}h1{font-size:22px;margin:0 0 5px}h2{font-size:17px;margin:0 0 10px}.muted{color:var(--muted);font-size:12px;line-height:1.55}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:10px 12px;background:#17263b;position:relative;z-index:2}.tab{padding:11px 5px;border:1px solid var(--line);background:#233a54;color:var(--txt);border-radius:9px;font-size:13px}.tab.active{background:var(--blue);border-color:#5ab8eb;font-weight:700}.pane{display:none}.pane.active{display:block}.pad{padding:14px 15px 28px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}button,select,input{font:inherit;color:var(--txt);border:1px solid #516985;background:#25425f;border-radius:9px;padding:10px}button{cursor:pointer}button.primary{background:#096d9d;font-weight:700}button:disabled{opacity:.55}.card{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px;margin-bottom:12px}.status{font-size:13px;line-height:1.5}.note{padding:10px 12px;background:#24364b;border-left:3px solid #62b8eb;border-radius:6px;margin:12px 0;font-size:13px;line-height:1.5}.kpi{font-weight:700;font-size:22px}.smallgap{margin-top:6px}.link{display:block;padding:12px;margin:9px 0;border:1px solid var(--line);border-radius:10px;background:#243a55;color:#a9e0ff;text-decoration:none}.link span{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.45}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tile{padding:12px;border-radius:10px;background:#253c57}.tile strong{display:block;font-size:18px;margin:4px 0}#map{height:54dvh;height:54vh;min-height:320px;width:100%;background:#253a4d;z-index:0}body .leaflet-popup-cont
-ent{color:#192436}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-grid label{font-size:12px;color:var(--muted);display:grid;gap:4px}.form-grid input,.form-grid select{min-width:0;width:100%}.wide{grid-column:1/-1}.entry{border-bottom:1px solid var(--line);padding:12px 0;font-size:14px}.entry small{display:block;color:var(--muted);margin-top:4px}a{color:#a9e0ff}footer{padding:14px;color:var(--muted);font-size:11px;line-height:1.55}@media(min-width:700px){main{max-width:850px;margin:auto}}
+:root{color-scheme:dark;--bg:#101a2a;--card:#1b2a41;--line:#334963;--txt:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;width:100%;background:var(--bg);color:var(--txt);font:15px system-ui,-apple-system,Arial,sans-serif}
+header{padding:17px 16px 10px;background:#17263b}h1{font-size:22px;margin:0 0 5px}h2{font-size:17px;margin:0 0 10px}
+.muted{color:var(--muted);font-size:12px;line-height:1.55}
+.tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:10px 12px;background:#17263b;position:relative;z-index:2}
+.tab{padding:11px 5px;border:1px solid var(--line);background:#233a54;color:var(--txt);border-radius:9px;font-size:13px;min-width:0}
+.tab.active{background:var(--blue);border-color:#5ab8eb;font-weight:700}
+.pane{display:none}.pane.active{display:block}
+.pad{padding:14px 15px 28px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+button,select,input{font:inherit;color:var(--txt);border:1px solid #516985;background:#25425f;border-radius:9px;padding:10px}
+button{cursor:pointer}button.primary{background:#096d9d;font-weight:700}button:disabled{opacity:.55}
+.card{border:1px solid var(--line);background:var(--card);border-radius:12px;padding:13px;margin-bottom:12px}
+.status{font-size:13px;line-height:1.5}
+.note{padding:10px 12px;background:#24364b;border-left:3px solid #62b8eb;border-radius:6px;margin:12px 0;font-size:13px;line-height:1.5}
+.link{display:block;padding:12px;margin:9px 0;border:1px solid var(--line);border-radius:10px;background:#243a55;color:#a9e0ff;text-decoration:none}
+.link span{display:block;color:var(--muted);font-size:12px;margin-top:4px;line-height:1.45}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.tile{padding:12px;border-radius:10px;background:#253c57}.tile strong{display:block;font-size:18px;margin:4px 0}
+#map{display:block;position:relative;width:100%;height:54vh;min-height:320px;overflow:hidden;background:#253a4d;z-index:0}
+@supports(height:54dvh){#map{height:54dvh}}
+.leaflet-container{width:100%;height:100%;font:13px system-ui,Arial,sans-serif}
+.leaflet-popup-content{color:#192436}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form-grid label{font-size:12px;color:var(--muted);display:grid;gap:4px}
+.form-grid input,.form-grid select{min-width:0;width:100%}.wide{grid-column:1/-1}
+.entry{border-bottom:1px solid var(--line);padding:12px 0;font-size:14px}.entry small{display:block;color:var(--muted);margin-top:4px}
+a{color:#a9e0ff}footer{padding:14px;color:var(--muted);font-size:11px;line-height:1.55}
+@media(min-width:700px){main{max-width:850px;margin:auto}}
 </style>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 <header><h1>📡 RadioRadar</h1><div class="muted">Мониторинг радиоэфира · Telegram Mini App</div></header>
 <main>
-<nav class="tabs" aria-label="Разделы"><button class="tab active" data-tab="map-pane">🗺 Карта</button><button class="tab" data-tab="air-pane">📻 Радиоэфир</button><button class="tab" data-tab="sdr-pane">📡 SDR</button></nav>
+<nav class="tabs" aria-label="Разделы">
+<button class="tab active" type="button" data-tab="map-pane">🗺 Карта</button>
+<button class="tab" type="button" data-tab="air-pane">📻 Радиоэфир</button>
+<button class="tab" type="button" data-tab="sdr-pane">📡 SDR</button>
+</nav>
 <section id="map-pane" class="pane active">
-<div class="pad" style="padding-bottom:0"><div class="toolbar"><button class="primary" id="locate">📍 Моё положение</button><select id="radius" aria-label="Радиус зоны"><option value="1000">1 км</option><option value="5000">5 км</option><option value="10000" selected>10 км</option><option value="25000">25 км</option><option value="50000">50 км</option><option value="100000">100 км</option></select></div><div class="card status" id="geo-status" role="status">Нажмите «Моё положение», чтобы отметить центр зоны.</div></div>
+<div class="pad" style="padding-bottom:0">
+<div class="toolbar"><button class="primary" id="locate" type="button">📍 Моё положение</button>
+<select id="radius" aria-label="Радиус зоны"><option value="1000">1 км</option><option value="5000">5 км</option><option value="10000" selected>10 км</option><option value="25000">25 км</option><option value="50000">50 км</option><option value="100000">100 км</option></select></div>
+<div class="card status" id="geo-status" role="status">Нажмите «Моё положение», чтобы отметить центр зоны.</div>
+</div>
 <div id="map" aria-label="Карта вашей зоны наблюдения"></div>
-<div class="pad"><div class="note">Окружность — выбранная географическая зона, <b>не радиус приёма</b>. Без подключённого приёмника приложение не определяет активные рации и не знает, находятся ли они в этом круге.</div><div class="muted">🔵 Центр зоны · голубой пунктир — выбранный радиус. Местоположение запрашивается только после нажатия кнопки.</div></div>
+<div class="pad"><div class="note">Окружность — выбранная географическая зона, <b>не радиус приёма</b>. Без подключённого приёмника приложение не определяет активные рации и не знает, находятся ли они в этом круге.</div>
+<div class="muted">🔵 Центр зоны · голубой пунктир — выбранный радиус. Местоположение запрашивается только после нажатия кнопки.</div></div>
 </section>
-<section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых приёмников</span><strong id="receivers-count">0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong id="auto-count">0</strong></div></div><div class="note">Сейчас нет подключённого источника измерений. Нельзя считать отсутствие данных отсутствием передач. Этот сайт не использует микрофон телефона для определения радиочастот.</div><h2>Журнал ручных наблюдений</h2><div class="muted" style="margin-bottom:10px">Записи вводятся вами, а не обнаруживаются ботом. Сохраняются только на этом устройстве (в памяти браузера). Не вводите персональные сведения.</div><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button id="clear" type="button">Очистить журнал</button></div><div id="entries" aria-live="polite" class="card"><span class="muted">Записей пока нет.</span></div></div></section>
-<section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — сторонние каталоги. Наличие приёмника рядом с вами, доступ к конкретной частоте и возможность автоматической обработки <b>не гарантируются</b>. Эти ссылки не передают измерения в RadioRadar.</div><a class="link" href="https://rx.linkfanel.net/" target="_blank" rel="noopener noreferrer">🌍 Карта KiwiSDR<span>Поиск общедоступных приёмников и их заявленных диапазонов. Многие предназначены преимущественно для КВ.</span></a><a class="link" href="https://www.receiverbook.de/" target="_blank" rel="noopener noreferrer">📍 ReceiverBook<span>Каталог публичных онлайн-приёмников (доступность зависит от операторов).</span></a><a class="link" href="http://websdr.org/" target="_blank" rel="noopener noreferrer">🎧 WebSDR<span>Каталог удалённых радиоприёмников. Некоторые браузеры могут блокировать HTTP-сайты.</span></a><div class="card"><h2>Как появятся реальные обнаружения?</h2><div class="muted">Потребуется законно доступный SDR-приёмник, который предоставляет измерения с известным временем, частотой и местом приёма. Само наличие открытого онлайн-приёмника не означает, что он предоставляет API сканирования. При подключении подходящего источника можно добавить обработку и журнал реальных измерений.</div></div><div class="muted">Стандарты вроде TETRA, DMR, P25 и аналоговой FM определяются по характеристикам сигнала при наличии пригодных данных. Шифрование не скрывает сам радиосигнал, но определение стандарта не всегда возможно.</div></div></section>
+<section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2>
+<div class="grid"><div class="tile"><span class="muted">Подключённых приёмников</span><strong id="receivers-count">0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong id="auto-count">0</strong></div></div>
+<div class="note">Сейчас нет подключённого источника измерений. Нельзя считать отсутствие данных отсутствием передач. Этот сайт не использует микрофон телефона для определения радиочастот.</div>
+<h2>Журнал ручных наблюдений</h2><div class="muted" style="margin-bottom:10px">Записи вводятся вами, а не обнаруживаются ботом. Сохраняются только на этом устройстве (в памяти браузера). Не вводите персональные сведения.</div>
+<form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label>
+<label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label>
+<label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form>
+<div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button id="clear" type="button">Очистить журнал</button></div><div id="entries" aria-live="polite" class="card"><span class="muted">Записей пока нет.</span></div></div></section>
+<section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2>
+<div class="note">Ниже — сторонние каталоги. Наличие приёмника рядом, доступ к конкретной частоте и возможность автоматической обработки <b>не гарантируются</b>. Ссылки не передают измерения в RadioRadar.</div>
+<a class="link" href="https://rx.linkfanel.net/" target="_blank" rel="noopener noreferrer">🌍 Карта KiwiSDR<span>Поиск общедоступных приёмников и их диапазонов. Многие предназначены преимущественно для КВ.</span></a>
+<a class="link" href="https://www.receiverbook.de/" target="_blank" rel="noopener noreferrer">📍 ReceiverBook<span>Каталог публичных онлайн-приёмников (доступность зависит от операторов).</span></a>
+<a class="link" href="http://websdr.org/" target="_blank" rel="noopener noreferrer">🎧 WebSDR<span>Каталог удалённых радиоприёмников. Некоторые браузеры могут блокировать HTTP-сайты.</span></a>
+<div class="card"><h2>Как появятся реальные обнаружения?</h2><div class="muted">Потребуется законно доступный SDR-приёмник с измерениями частоты, времени и места приёма. Публичный онлайн-приёмник не обязательно предоставляет API для автоматического сканирования.</div></div>
+<div class="muted">Тип связи не всегда можно определить по одному измерению. Шифрование не скрывает сам радиосигнал.</div></div></section>
 </main>
-<footer>RadioRadar · бесплатный интерфейс. Публичные SDR и картографические сервисы управляются сторонними операторами. Не предназначен для скрытого отслеживания людей. Картографическая основа © OpenStreetMap contributors.</footer>
+<footer>RadioRadar · бесплатный интерфейс. SDR и картографические сервисы управляются сторонними операторами. Не предназначен для скрытого отслеживания людей. Картографическая основа © OpenStreetMap contributors.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous"></script>
 <script>
 (()=>{'use strict';
 const tg=window.Telegram?.WebApp;try{tg?.ready();tg?.expand()}catch(_e){}
 const $=id=>document.getElementById(id);
 let map=null,marker=null,circle=null,center=null;
+let scheduled=false;
+function refreshMap(){if(!map||scheduled||!$('map').offsetWidth||!$('map').offsetHeight)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;map.invalidateSize({animate:false,pan:false});});}
+function fitZone(){if(!map||!circle)return;refreshMap();requestAnimationFrame(()=>{map.invalidateSize({animate:false,pan:false});map.fitBounds(circle.getBounds(),{padding:[20,20],animate:false});});}
 if(window.L){
-map=L.map('map',{zoomControl:true}).setView([55.75,37.62],5);
+map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([55.75,37.62],5);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
-const update=()=>{if(!map)return;map.invalidateSize({animate:false});};
-window.addEventListener('resize',update);document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(update,150)});
-if(window.ResizeObserver)new ResizeObserver(update).observe($('map'));
-setTimeout(update,300);setTimeout(update,1200);
+window.addEventListener('resize',refreshMap);
+window.addEventListener('orientationchange',()=>setTimeout(refreshMap,350));
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(refreshMap,200)});
+window.addEventListener('pageshow',()=>setTimeout(refreshMap,250));
+if(window.ResizeObserver)new ResizeObserver(refreshMap).observe($('map'));
+for(const delay of [100,400,1000,2000])setTimeout(refreshMap,delay);
 }else{$('geo-status').textContent='Не удалось загрузить библиотеку карты. Проверьте интернет.';}
-function setCenter(lat,lon){if(!map)return;center=[lat,lon];if(marker)map.removeLayer(marker);if(circle)map.removeLayer(circle);marker=L.circleMarker(center,{radius:8,color:'#fff',weight:2,fillColor:'#249de6',fillOpacity:1}).addTo(map).bindPopup('Центр выбранной зоны');circle=L.circle(center,{radius:Number($('radius').value),color:'#61c8ff',dashArray:'6 6',weight:2,fillOpacity:0.05}).addTo(map);map.fitBounds(circle.getBounds(),{padding:[16,16],animate:false});setTimeout(()=>map.invalidateSize(false),200);}
-$('locate').addEventListener('click',()=>{if(!navigator.geolocation){$('geo-status').textContent='Геолокация недоступна.';return;}$('locate').disabled=true;$('geo-status').textContent='Определяем положение…';navigator.geolocation.getCurrentPosition(p=>{$('locate').disabled=false;setCenter(p.coords.latitude,p.coords.longitude);$('geo-status').textContent='Центр зоны определён. Это не данные о местоположении раций.';},e=>{$('locate').disabled=false;$('geo-status').textContent='Не удалось определить местоположение: '+e.message;},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});});
+function setCenter(lat,lon){if(!map)return;center=[lat,lon];if(marker)map.removeLayer(marker);if(circle)map.removeLayer(circle);
+marker=L.circleMarker(center,{radius:8,color:'#fff',weight:2,fillColor:'#249de6',fillOpacity:1}).addTo(map).bindPopup('Центр выбранной зоны');
+circle=L.circle(center,{radius:Number($('radius').value),color:'#61c8ff',dashArray:'6 6',weight:2,fillColor:'#61c8ff',fillOpacity:0.05}).addTo(map);fitZone();setTimeout(fitZone,250);}
+$('locate').addEventListener('click',()=>{if(!navigator.geolocation){$('geo-status').textContent='Геолокация недоступна.';return;}
+$('locate').disabled=true;$('geo-status').textContent='Определяем положение…';
+navigator.geolocation.getCurrentPosition(p=>{$('locate').disabled=false;setCenter(p.coords.latitude,p.coords.longitude);$('geo-status').textContent='Центр зоны определён. Это не данные о местоположении раций.';},e=>{$('locate').disabled=false;$('geo-status').textContent='Не удалось определить местоположение: '+e.message;},{enableHighAccuracy:true,timeout:15000,maximumAge:60000});});
 $('radius').addEventListener('change',()=>{if(center)setCenter(...center)});
-document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t===tab));document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id===tab.dataset.tab));if(tab.dataset.tab==='map-pane')setTimeout(()=>map?.invalidateSize(false),120);}));
-const key='radioradar_manual_readings_v1';let readings=[];try{const value=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(value))readings=value.filter(x=>x&&Number.isFinite(x.mhz)&&typeof x.time==='string').slice(0,100);}catch(_e){}
+document.querySelectorAll('.tab').forEach(tab=>tab.addEventListener('click',()=>{
+document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t===tab));
+document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('active',p.id===tab.dataset.tab));
+if(tab.dataset.tab==='map-pane'){for(const delay of [50,220,600])setTimeout(()=>{refreshMap();if(circle)fitZone();},delay);}}));
+const key='radioradar_manual_readings_v1';let readings=[];
+try{const value=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(value))readings=value.filter(x=>x&&Number.isFinite(x.mhz)&&typeof x.time==='string').slice(0,100);}catch(_e){}
 function persist(){try{localStorage.setItem(key,JSON.stringify(readings))}catch(_e){$('entries').title='Не удалось сохранить журнал в браузере';}}
-function render(){const root=$('entries');root.replaceChildren();if(!readings.length){const el=document.createElement('span');el.className='muted';el.textContent='Записей пока нет.';root.append(el);return;}for(const x of readings){const row=document.createElement('div');row.className='entry';const name=document.createElement('strong');name.textContent=x.mhz.toFixed(4)+' МГц · '+x.mode;const sub=document.createElement('small');sub.textContent='Ручная запись · '+x.strength+' · '+new Date(x.time).toLocaleString('ru-RU');row.append(name,sub);root.append(row);}}
-$('reading-form').addEventListener('submit',e=>{e.preventDefault();const mhz=Number($('mhz').value);if(!Number.isFinite(mhz)||mhz<0.001||mhz>6000)return;readings.unshift({mhz,mode:$('mode').value,strength:$('strength').value,time:new Date().toISOString()});readings=readings.slice(0,100);persist();render();$('mhz').value='';});
-$('clear').addEventListener('click',()=>{if(!readings.length)return;if(!confirm('Удалить все ручные наблюдения на этом устройстве?'))return;readings=[];persist();render();});render();
+function render(){const root=$('entries');root.replaceChildren();if(!readings.length){const el=document.createElement('span');el.className='muted';el.textContent='Записей пока нет.';root.append(el);return;}
+for(const x of readings){const row=document.createElement('div');row.className='entry';const name=document.createElement('strong');name.textContent=x.mhz.toFixed(4)+' МГц · '+x.mode;const sub=document.createElement('small');sub.textContent='Ручная запись · '+x.strength+' · '+new Date(x.time).toLocaleString('ru-RU');row.append(name,sub);root.append(row);}}
+$('reading-form').addEventListener('submit',e=>{e.preventDefault();const mhz=Number($('mhz').value);if(!Number.isFinite(mhz)||mhz<0.001||mhz>6000)return;
+readings.unshift({mhz,mode:$('mode').value,strength:$('strength').value,time:new Date().toISOString()});readings=readings.slice(0,100);persist();render();$('mhz').value='';});
+$('clear').addEventListener('click',()=>{if(!readings.length)return;if(!confirm('Удалить все ручные наблюдения на этом устройстве?'))return;readings=[];persist();render();});
+render();
 })();
 </script>
 </body>

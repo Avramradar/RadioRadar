@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
-<title>RadioRadar — мониторинг радиоэфира</title>
+<title>RadioRadar 3.2 — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#101a2a;--panel:#17263b;--card:#1b2a41;--line:#334963;--text:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
@@ -48,13 +48,14 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 <div id="history-status" class="muted" role="status">Архив не загружен.</div>
 <details style="margin-top:10px"><summary>Формат исторического файла</summary><p class="muted">TXT: time;frequency_mhz;power_dbm;source. Например: 2025-01-01T00:00:00Z;100;-100;lab-test. Первая строка может быть заголовком. JSON: массив объектов с полями time, frequency_mhz, power_dbm, source или объект {measurements: [...]}. Для анализа требуется минимум 9 последовательных измерений на одной частоте от одного источника. Сохранение на сервер не выполняется.</p></details></div>
 <div class="card" id="history-results" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
-<h2>Лабораторная проверка алгоритма</h2>
+<h2>Лабораторная проверка алгоритма · 3.2</h2>
 <div class="card">
  <div class="muted">Проверка на публичном научном CSV с измерениями GMSK. Файл анализируется локально; используется мощность Power и эталонная метка Signal presence (any). Тест не определяет рации, географические координаты или текущую активность радиоэфира.</div>
  <label for="lab-file" class="muted" style="display:block;margin-top:12px">Исходный dataset.csv (до 2 МБ)</label>
  <input id="lab-file" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;margin:9px 0">
  <div class="toolbar"><button type="button" class="primary" id="lab-analyze">🧪 Проверить обнаружение</button><button type="button" id="lab-clear">Очистить результаты</button></div>
  <div id="lab-status" class="muted" role="status">Выберите исходный dataset.csv, затем нажмите «Проверить обнаружение».</div>
+ <div class="note">Дополнительная проверка 3.2: пять воспроизводимых разбиений 80/20. Она оценивает разброс результатов внутри того же CSV, но не заменяет независимый эксперимент.</div>
  <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">Детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
 </div>
 <div id="lab-results" class="card" aria-live="polite"><span class="muted">Лабораторных результатов пока нет.</span></div>
@@ -316,9 +317,7 @@ function labParse(text){
  if(rows.length<30)throw Error('Недостаточно корректных измерений.');
  return {rows,rejected};
 }
-function labEvaluate(rows){
- const training=rows.filter((_r,i)=>i%5!==0);
- const testing=rows.filter((_r,i)=>i%5===0);
+function labScore(training,testing){
  const noise=training.filter(r=>r.label===0).map(r=>r.power);
  if(noise.length<15||!testing.some(r=>r.label===0)||!testing.some(r=>r.label===1))throw Error('Недостаточно примеров каждого класса для оценки.');
  const baseline=histMedian(noise);
@@ -335,12 +334,37 @@ function labEvaluate(rows){
  const f1=precision+recall?2*precision*recall/(precision+recall):0;
  return {threshold,baseline,mad,train:training.length,test:testing.length,noise:noise.length,tp,fp,tn,fn,precision,recall,specificity,f1};
 }
+function labEvaluate(rows){
+ return labScore(rows.filter((_r,i)=>i%5!==0),rows.filter((_r,i)=>i%5===0));
+}
+// Five reproducible stratified 80/20 splits of the same laboratory file.
+// This measures split variability, not generalisation to other receivers/sessions.
+function labRepeat(rows){
+ function shuffled(indices,seed){
+  const a=indices.slice();let state=seed>>>0;
+  function random(){state^=state<<13;state^=state>>>17;state^=state<<5;return(state>>>0)/4294967296;}
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+ }
+ const negatives=[],positives=[];
+ rows.forEach((r,i)=>(r.label===1?positives:negatives).push(i));
+ if(positives.length<10||negatives.length<10)throw Error('Недостаточно меток для повторной проверки.');
+ const scores=[];
+ for(let seed=1;seed<=5;seed++){
+  const ns=shuffled(negatives,seed*1051+17),ps=shuffled(positives,seed*2179+31);
+  const chosen=new Set([...ns.slice(0,Math.max(1,Math.floor(ns.length*.2))),...ps.slice(0,Math.max(1,Math.floor(ps.length*.2)))]);
+  const train=[],test=[];rows.forEach((r,i)=>(chosen.has(i)?test:train).push(r));
+  scores.push(labScore(train,test));
+ }
+ return scores;
+}
+function labRange(values){return (100*Math.min(...values)).toFixed(1)+'–'+(100*Math.max(...values)).toFixed(1)+'%';}
 $('lab-analyze').addEventListener('click',async()=>{
  const file=$('lab-file').files?.[0];if(!file){labMessage('Выберите dataset.csv.');return;}
  if(file.size>2*1024*1024){labMessage('Максимальный размер CSV — 2 МБ.');return;}
  const button=$('lab-analyze');button.disabled=true;labMessage('Проверяем локальный CSV…');
  try{
-  const parsed=labParse(await file.text());const r=labEvaluate(parsed.rows);labRoot.replaceChildren();
+  const parsed=labParse(await file.text());const r=labEvaluate(parsed.rows);const repeated=labRepeat(parsed.rows);labRoot.replaceChildren();
   const title=document.createElement('strong');title.textContent='Лабораторный тест выполнен';labRoot.appendChild(title);
   const intro=document.createElement('p');intro.className='muted';intro.textContent='Прочитано '+parsed.rows.length+' строк; отброшено '+parsed.rejected+'. Обучение: '+r.train+'; проверка: '+r.test+'. Контрольный эксперимент, не данные о рациях.';labRoot.appendChild(intro);
   labRow(labRoot,'Порог мощности',r.threshold.toFixed(2)+' dBm (фон '+r.baseline.toFixed(2)+' dBm)');
@@ -352,7 +376,10 @@ $('lab-analyze').addEventListener('click',async()=>{
   labRow(labRoot,'Полнота обнаружений (Recall)',(100*r.recall).toFixed(1)+'%');
   labRow(labRoot,'Специфичность',(100*r.specificity).toFixed(1)+'%');
   labRow(labRoot,'F1',(100*r.f1).toFixed(1)+'%');
-  const warning=document.createElement('p');warning.className='muted';warning.textContent='Ограничение: тестируется один лабораторный сигнал GMSK при разделении по строкам, а не независимым сеансам. Результаты не переносятся на другие устройства, сигналы или места без отдельной проверки.';labRoot.appendChild(warning);
+  labRow(labRoot,'Пять разбиений: Recall (минимум–максимум)',labRange(repeated.map(v=>v.recall)));
+  labRow(labRoot,'Пять разбиений: Precision (минимум–максимум)',labRange(repeated.map(v=>v.precision)));
+  labRow(labRoot,'Пять разбиений: F1 (минимум–максимум)',labRange(repeated.map(v=>v.f1)));
+  const warning=document.createElement('p');warning.className='muted';warning.textContent='Ограничение: все шесть проверок относятся к одному лабораторному CSV. Случайные разбиения по строкам не являются независимыми сеансами, доверительными интервалами или доказательством работы на новых устройствах. Результаты не переносятся на другие устройства, сигналы или места без отдельной проверки.';labRoot.appendChild(warning);
   labMessage('Проверка выполнена локально. Файл никуда не отправлялся.');
  }catch(e){labMessage('Ошибка лабораторной проверки: '+e.message);}
  finally{button.disabled=false;}

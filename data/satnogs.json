@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "source": "SatNOGS Network",
+  "dataset": "archived satellite observations",
+  "generated_at": null,
+  "minimum_age_hours": 48,
+  "latest_status": "not_yet_collected",
+  "observations": [],
+  "note": "No live data has been fetched yet. Execute GitHub Action to populate this file."
+}

@@ -2,9 +2,15 @@
   "schema_version": 1,
   "source": "SatNOGS Network",
   "dataset": "archived satellite observations",
-  "generated_at": null,
+  "license": "CC BY-SA (source metadata)",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "api_url": "https://network.satnogs.org/api/observations/",
+  "generated_at": "2026-10-10T06:17:37.900Z",
   "minimum_age_hours": 48,
-  "latest_status": "not_yet_collected",
-  "observations": [],
-  "note": "No live data has been fetched yet. Execute GitHub Action to populate this file."
+  "note": "Satellite observations only; no direct ground-radio detection or transmitter location. Absence of matching records is not absence of RF activity.",
+  "latest_status": "no_matching_archival_records",
+  "inspected_pages": 12,
+  "scanned_records": 300,
+  "exhaustive": false,
+  "observations": []
 }

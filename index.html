@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
-<title>RadioRadar 3.4 — мониторинг радиоэфира</title>
+<title>RadioRadar 3.5 — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#101a2a;--panel:#17263b;--card:#1b2a41;--line:#334963;--text:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
@@ -76,6 +76,16 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
  <details style="margin-top:12px"><summary>Как проводится проверка</summary><p class="muted">При отсутствии пригодного поля сеанса — детерминированное разбиение строк: каждая пятая строка — тестовая (20%), остальные — обучающая часть (80%). Порог строится только по обучающим записям с эталонной меткой «нет сигнала»: медиана мощности + максимум из 3 dB и 6 × нормализованного MAD. На тесте метки используются исключительно для оценки качества. При упорядоченных/зависимых данных эта оценка может быть оптимистичной; результат не является доказательством способности находить произвольные рации.</p></details>
 </div>
 <div id="lab-results" class="card" aria-live="polite"><span class="muted">Лабораторных результатов пока нет.</span></div>
+
+<h2>Исторические измерения мобильной сети · 3.5</h2>
+<div class="card">
+  <p class="muted">Отдельный режим для архивного CSV с параметрами 5G NR (например, Radio parameters gr_trial 2.csv). Это измерения качества соединения смартфона, а не детектор радиопередатчиков. Координаты, идентификаторы сот и данные устройства не выводятся, не сохраняются и не передаются.</p>
+  <label for="nr-file" class="muted">CSV с полями time, rat, nr_rsrp, nr_rsrq, nr_rssnr (до 2 МБ)</label>
+  <input id="nr-file" type="file" accept=".csv,text/csv,text/plain" style="display:block;width:100%;margin:9px 0">
+  <div class="toolbar"><button id="nr-analyze" class="primary" type="button">📊 Проанализировать 5G</button><button id="nr-export" type="button" disabled>⬇ TXT-отчёт</button><button id="nr-clear" type="button">Очистить</button></div>
+  <div id="nr-status" class="muted" role="status">Выберите архивный CSV. Исходная геолокация игнорируется.</div>
+</div>
+<div id="nr-results" class="card" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
 <h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
 <section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — прямой переход к согласованной с оператором станции и каталоги других приёмников. Открытие WebSDR не подключает автоматическое измерение сигнала к RadioRadar.</div>
 <div class="receiver"><h3>📡 WebSDR RW6MIT / R6MX</h3><div class="meta">Ростов-на-Дону · онлайн-приёмник<br>Доступные на просмотренном интерфейсе диапазоны: <b>2 м</b> и <b>70 см</b>.<br>Режим: <b>ручной просмотр спектра и прослушивание</b>.<br>Автоматический поток измерений: <b>не подключён</b>.<br>Приёмник находится в Ростове-на-Дону, а не обязательно в вашей зоне на карте.</div><a class="link" href="http://87.117.25.250/" target="_blank" rel="noopener noreferrer">📻 Открыть WebSDR<span>Внешний сайт http://87.117.25.250/ — в некоторых версиях Telegram HTTP-ссылки открываются только во внешнем браузере.</span></a></div>
@@ -484,6 +494,59 @@ $('lab-clear').addEventListener('click',()=>{
  $('lab-file').value='';labLastReport='';$('lab-export').disabled=true;labEmpty();
  labMessage('Выберите исходный dataset.csv, заполните паспорт и нажмите «Проверить обнаружение».');
 });
+
+// Standalone retrospective mobile-radio quality analysis. No geolocation, network, cell identity, or live scanning.
+let nrLastReport='';
+function nrSay(message){$('nr-status').textContent=message;}
+function nrEmpty(){$('nr-results').replaceChildren();const x=document.createElement('span');x.className='muted';x.textContent='Результатов пока нет.';$('nr-results').append(x);}
+function nrNumber(v){if(v===undefined||v===null||String(v).trim()==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;}
+function nrStats(values){const s=[...values].sort((a,b)=>a-b);return {min:s[0],max:s[s.length-1],mean:values.reduce((a,b)=>a+b,0)/values.length,median:histMedian(values)};}
+function nrParse(csv){
+ const lines=csv.replace(/^\uFEFF/,'').split(/\r?\n/).filter(x=>x.trim());
+ if(lines.length<3||lines.length>30000)throw Error('Требуется от 2 до 29 999 строк данных.');
+ const header=labCsvCells(lines.shift()).map(v=>v.trim().toLowerCase());
+ for(const key of ['time','rat','nr_rsrp','nr_rsrq','nr_rssnr'])if(!header.includes(key))throw Error('Отсутствует столбец '+key+'.');
+ const ix=Object.fromEntries(['time','rat','nr_rsrp','nr_rsrq','nr_rssnr'].map(k=>[k,header.indexOf(k)]));
+ const rows=[];let rejected=0;
+ for(const line of lines){
+  const cells=labCsvCells(line);
+  const rawtime=nrNumber(cells[ix.time]);
+  const t=rawtime!==null?(rawtime>1e12?rawtime:rawtime*1000):Date.parse(cells[ix.time]||'');
+  const p=nrNumber(cells[ix.nr_rsrp]),q=nrNumber(cells[ix.nr_rsrq]),s=nrNumber(cells[ix.nr_rssnr]);
+  if(!Number.isFinite(t)||t>Date.now()||t<946684800000||p===null||p>=0||p< -160||cells[ix.rat].trim().toUpperCase()!=='NR') {rejected++;continue;}
+  rows.push({t,p,q:q!==null&&q<0&&q>=-50?q:null,s:s!==null&&s>=-50&&s<=100?s:null});
+ }
+ if(rows.length<2)throw Error('Не найдены архивные измерения 5G NR с корректным NR-RSRP.');
+ rows.sort((a,b)=>a.t-b.t);
+ return {rows,rejected,total:lines.length};
+}
+$('nr-analyze').addEventListener('click',async()=>{
+ const file=$('nr-file').files?.[0];if(!file){nrSay('Выберите файл CSV.');return;}
+ if(file.size>2*1024*1024){nrSay('Файл больше 2 МБ.');return;}
+ $('nr-analyze').disabled=true;$('nr-export').disabled=true;nrLastReport='';
+ try{
+  const {rows,rejected,total}=nrParse(await file.text());
+  const power=nrStats(rows.map(x=>x.p));
+  const quality=rows.filter(x=>x.q!==null).map(x=>x.q),snr=rows.filter(x=>x.s!==null).map(x=>x.s);
+  const qstats=quality.length?nrStats(quality):null,sstats=snr.length?nrStats(snr):null;
+  const duration=(rows[rows.length-1].t-rows[0].t)/1000;
+  const root=$('nr-results');root.replaceChildren();const heading=document.createElement('strong');heading.textContent='Архив мобильных измерений обработан';root.append(heading);
+  labRow(root,'Принято / отклонено',rows.length+' / '+rejected+' (всего '+total+')');
+  labRow(root,'Период (UTC)',new Date(rows[0].t).toISOString()+' — '+new Date(rows[rows.length-1].t).toISOString());
+  labRow(root,'Продолжительность',(duration/60).toFixed(2)+' мин');
+  labRow(root,'NR-RSRP · среднее / медиана',power.mean.toFixed(2)+' / '+power.median.toFixed(2)+' dBm');
+  labRow(root,'NR-RSRP · минимум / максимум',power.min.toFixed(1)+' / '+power.max.toFixed(1)+' dBm');
+  labRow(root,'NR-RSRQ · среднее',qstats?qstats.mean.toFixed(2)+' dB':'нет данных');
+  labRow(root,'NR-SINR · среднее',sstats?sstats.mean.toFixed(2)+' dB':'нет данных');
+  const note=document.createElement('p');note.className='muted';note.textContent='Качество сигнала телефона в исторической записи; не определяет эфирную активность других устройств, не подтверждает присутствие передатчика и не указывает его местоположение. Значения −1 в отдельных полях LTE не используются.';root.append(note);
+  nrLastReport=['RadioRadar 3.5 — анализ архивных параметров 5G NR','Файл: '+file.name,'Выполнено: '+new Date().toISOString(),'','Исходная запись: '+rows.length+' измерений; отклонено: '+rejected,'Период UTC: '+new Date(rows[0].t).toISOString()+' — '+new Date(rows[rows.length-1].t).toISOString(),'Длительность: '+duration.toFixed(3)+' с','NR-RSRP среднее: '+power.mean.toFixed(2)+' dBm','NR-RSRP медиана: '+power.median.toFixed(2)+' dBm','NR-RSRP минимум: '+power.min+' dBm','NR-RSRP максимум: '+power.max+' dBm','NR-RSRQ среднее: '+(qstats?qstats.mean.toFixed(2)+' dB':'нет данных'),'NR-SINR среднее: '+(sstats?sstats.mean.toFixed(2)+' dB':'нет данных'),'','Данные анализировались локально; координаты и идентификаторы оборудования/сот не сохранялись в отчёте.','Это параметры качества мобильного соединения, а не измерения активности чужих радиостанций.'].join('\n');
+  $('nr-export').disabled=false;nrSay('Анализ завершён локально. Доступен TXT-отчёт.');
+ }catch(e){nrEmpty();nrSay('Ошибка: '+e.message);}
+ finally{$('nr-analyze').disabled=false;}
+});
+$('nr-export').addEventListener('click',()=>{if(!nrLastReport)return;const url=URL.createObjectURL(new Blob(['\uFEFF'+nrLastReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='RadioRadar_3_5_5G_report.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);});
+$('nr-clear').addEventListener('click',()=>{$('nr-file').value='';nrLastReport='';$('nr-export').disabled=true;nrEmpty();nrSay('Файл не загружен.');});
+
 render();
 })();
 </script>

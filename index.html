@@ -38,7 +38,12 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
  <div id="map" aria-label="Карта зоны наблюдения"></div>
  <div class="pad"><div class="note">Окружность — выбранная географическая зона, <b>не дальность радиоприёма</b>. Без подключённого приёмника приложение не обнаруживает активные рации.</div><div class="muted">🔵 Центр зоны · голубой пунктир — радиус. Координаты запрашиваются только с вашего разрешения.</div></div>
 </section>
-<section id="air-pane" class="pane"><div class="pad"><h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых источников измерений</span><strong>0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong>0</strong></div></div><div class="note">Внешняя станция WebSDR доступна для ручного наблюдения в разделе SDR, но автоматические измерения из неё не поступают. Отсутствие данных не означает отсутствие передач. Записи ниже добавляются вручную.</div><h2>Импорт измерений TXT / JSON</h2>
+<section id="air-pane" class="pane"><div class="pad"><h2>🛰 Архивные наблюдения SatNOGS · RadioRadar</h2>
+<div class="card"><div class="muted">Автоматическая загрузка документированных спутниковых наблюдений из открытого архива SatNOGS. Данные публикуются с задержкой не менее 48 часов. Это метаданные сеансов приёма, а не измерения мощности dBm и не поиск наземных передатчиков. Не связаны с радиусом на карте.</div>
+<div class="toolbar" style="margin-top:12px"><button id="sat-refresh" type="button" class="primary">🛰 Обновить архив</button><a class="link" style="margin:0;display:inline-block" target="_blank" rel="noopener noreferrer" href="https://network.satnogs.org/">Первичный источник ↗</a></div>
+<div id="sat-status" class="muted" role="status">Ожидание загрузки архива GitHub Actions…</div></div>
+<div id="sat-results" class="card" aria-live="polite"><span class="muted">Наблюдения ещё не загружены.</span></div>
+<h2>Активность радиосигналов</h2><div class="grid"><div class="tile"><span class="muted">Подключённых источников измерений</span><strong>0</strong></div><div class="tile"><span class="muted">Автообнаружений</span><strong>0</strong></div></div><div class="note">Внешняя станция WebSDR доступна для ручного наблюдения в разделе SDR, но автоматические измерения из неё не поступают. Отсутствие данных не означает отсутствие передач. Записи ниже добавляются вручную.</div><h2>Импорт измерений TXT / JSON</h2>
 <div class="card"><label for="import-file" class="muted">Выберите локальный файл измерений (до 1 МБ)</label><input id="import-file" type="file" accept=".txt,.json,text/plain,application/json" style="display:block;width:100%;margin:10px 0"><button type="button" id="import-btn">📥 Импортировать</button><div id="import-status" class="muted" role="status" style="margin-top:10px">Данные импортируются только по вашему выбору, не считываются с WebSDR автоматически.</div><details style="margin-top:10px"><summary>Формат файлов</summary><p class="muted">JSON: массив записей или объект с полем measurements. Каждая запись: mhz (МГц), mode, strength, time (ISO 8601), source.</p><p class="muted">TXT: одна запись в строке, поля разделены точкой с запятой: частота МГц; тип; уровень; время ISO 8601; источник. Первая строка может содержать заголовки mhz;mode;strength;time;source. Пример: 145.500;FM / NFM;-81.4 dBm;2026-10-09T10:00:00Z;Мой приёмник.</p><p class="muted">Импортированные записи обозначаются отдельно от ручных. Источник файла указывается как предоставленный пользователем, а не проверенный приложением.</p></details></div>
 <h2>Исторические аномалии спектра</h2>
 <div class="card"><div class="muted">Отдельный анализатор архивных измерений мощности (dBm). Не сканирует эфир и не определяет тип источника. Используйте обезличенные данные с задержкой не меньше 24 часов. Результаты относятся только к указанному в файле измерительному источнику, не к выбранному квадрату карты.</div>
@@ -104,7 +109,7 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
 <a class="link" href="https://rx.linkfanel.net/" target="_blank" rel="noopener noreferrer">🌍 KiwiSDR Map<span>Карта доступных удалённых приёмников, многие работают преимущественно на КВ.</span></a><a class="link" href="https://www.receiverbook.de/" target="_blank" rel="noopener noreferrer">📍 ReceiverBook<span>Справочник общедоступных онлайн-приёмников.</span></a><a class="link" href="http://websdr.org/" target="_blank" rel="noopener noreferrer">🎧 WebSDR<span>Каталог приёмников, доступность зависит от операторов.</span></a>
 <div class="card"><h2>Автоматическое обнаружение</h2><div class="muted">Для автоматического отображения радиопередач необходим согласованный машинный интерфейс измерений (частота, уровень, время). У публичной страницы этого приёмника такой интерфейс пока не подтверждён. Приложение не пытается обращаться к внутренним или закрытым интерфейсам сервера.</div></div></div></section>
 </main>
-<footer>RadioRadar · исторический офлайн-анализ аномалий · бесплатный интерфейс. Карта © OpenStreetMap contributors. Не предназначен для скрытого отслеживания людей.</footer>
+<footer>RadioRadar · архивные спутниковые наблюдения и офлайн-анализ аномалий · бесплатный интерфейс. Карта © OpenStreetMap contributors. Не предназначен для скрытого отслеживания людей.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (()=>{'use strict';
@@ -623,6 +628,39 @@ $('wifi-example').addEventListener('click',()=>{
 });
 $('wifi-export').addEventListener('click',()=>{if(!wifiReport)return;const url=URL.createObjectURL(new Blob(['\uFEFF'+wifiReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='RadioRadar_3_6_WiFi_RSSI_report.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);});
 $('wifi-clear').addEventListener('click',()=>{$('wifi-file').value='';wifiReport='';$('wifi-export').disabled=true;wifiEmpty();wifiSay('Файл не загружен.');});
+
+
+// SatNOGS public, delayed satellite observation metadata. No sensing of terrestrial emitters.
+const satRoot=$('sat-results');
+async function loadSat(){
+ const button=$('sat-refresh');button.disabled=true;
+ $('sat-status').textContent='Загружаем опубликованный архив из GitHub Pages…';
+ satRoot.replaceChildren();
+ try{
+   const response=await fetch('./data/satnogs.json?v='+Date.now(),{cache:'no-store'});
+   if(!response.ok)throw Error('HTTP '+response.status+' — проверь, что GitHub Action создаёт data/satnogs.json');
+   const data=await response.json();
+   if(data.schema_version!==1||!Array.isArray(data.observations))throw Error('Неверный формат архива');
+   const heading=document.createElement('strong');heading.textContent='SatNOGS: '+data.observations.length+' архивных наблюдений';satRoot.appendChild(heading);
+   const date=document.createElement('p');date.className='muted';
+   date.textContent='Архив обновлён: '+(data.generated_at?new Date(data.generated_at).toLocaleString('ru-RU'):'ещё не собирался')+' · задержка минимум 48 ч · это не события в реальном времени.';satRoot.appendChild(date);
+   if(!data.observations.length){const el=document.createElement('p');el.className='muted';el.textContent='Наблюдений нет. '+(data.latest_status||'')+'. Проверь GitHub Actions. Отсутствие записей не означает отсутствия радиосигналов.';satRoot.appendChild(el);}
+   for(const item of data.observations.slice(0,30)){
+     if(!Number.isInteger(item.id)||!item.end||!item.source_url)continue;
+     const el=document.createElement('div');el.className='entry';
+     const title=document.createElement('strong');title.textContent='Спутниковое наблюдение №'+item.id;
+     const desc=document.createElement('small');desc.textContent='UTC: '+item.end+' · станция: '+(item.station||'не указана')+' · режим: '+(item.mode||'не указан')+' · статус: '+(item.status||'неизвестен')+(item.frequency_mhz!=null?' · номинальная частота: '+item.frequency_mhz+' МГц':'');
+     const link=document.createElement('a');link.textContent='Открыть запись SatNOGS ↗';link.target='_blank';link.rel='noopener noreferrer';link.href='https://network.satnogs.org/observations/'+item.id+'/';
+     el.append(title,desc,link);satRoot.appendChild(el);
+   }
+   $('sat-status').textContent='Проверка JSON завершена. Данные: SatNOGS Network (CC BY-SA), не собственные измерения телефона.';
+ }catch(err){
+   const el=document.createElement('p');el.className='muted';el.textContent='Архив не загружен: '+err.message+'. Не показываем вымышленные наблюдения.';satRoot.appendChild(el);
+   $('sat-status').textContent='Нет подтверждённых данных из источника.';
+ }finally{button.disabled=false;}
+}
+$('sat-refresh').addEventListener('click',loadSat);
+loadSat();
 
 render();
 })();

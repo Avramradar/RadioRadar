@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101a2a">
-<title>RadioRadar 3.5 — мониторинг радиоэфира</title>
+<title>RadioRadar 3.6 — мониторинг радиоэфира</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
 :root{color-scheme:dark;--bg:#101a2a;--panel:#17263b;--card:#1b2a41;--line:#334963;--text:#f1f6fc;--muted:#aac0d5;--blue:#1682bd}
@@ -86,6 +86,18 @@ footer{font-size:11px;color:var(--muted);line-height:1.5;padding:15px}a{color:#a
   <div id="nr-status" class="muted" role="status">Выберите архивный CSV. Исходная геолокация игнорируется.</div>
 </div>
 <div id="nr-results" class="card" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
+<h2>Собственный Wi-Fi · RSSI · 3.6</h2>
+<div class="card">
+ <p class="muted">Локальная проверка уровня сигнала собственной точки доступа, не сканирование чужих сетей. Поддерживается обезличенный CSV time,rssi_dbm,frequency_mhz или TXT-экспорт WiFiAnalyzer с разделителем |. В экспорте WiFiAnalyzer укажи точное имя только своей сети: остальные строки игнорируются, MAC-адреса в отчёт не попадают. Скриншоты не содержат точных секунд измерений.</p>
+ <label class="muted" for="wifi-ssid">Имя только твоей сети (для формата WiFiAnalyzer)</label>
+ <input id="wifi-ssid" type="text" placeholder="Имя своей Wi-Fi сети" autocomplete="off" style="display:block;width:100%;margin:8px 0 12px" maxlength="80">
+ <label class="muted" for="wifi-file">Экспорт WiFiAnalyzer TXT или обезличенный CSV (до 1 МБ)</label>
+ <input id="wifi-file" type="file" accept=".txt,.csv,text/plain,text/csv" style="display:block;width:100%;margin:8px 0 12px">
+ <div class="toolbar"><button id="wifi-analyze" class="primary" type="button">📶 Проверить Wi-Fi</button><button id="wifi-example" type="button">Пример: 4 показания</button><button id="wifi-export" type="button" disabled>⬇ TXT-отчёт</button><button id="wifi-clear" type="button">Очистить</button></div>
+ <div id="wifi-status" class="muted" role="status">Выбери файл или открой контрольный пример из четырёх показаний, присланных ранее.</div>
+ <details style="margin-top:12px"><summary>Формат обезличенного файла</summary><p class="muted">CSV: time,rssi_dbm,frequency_mhz. Пример: 2026-10-10T08:06:00+03:00,-61,2457. Для анализа динамики нужны хотя бы две разные отметки времени. Значения RSSI с повторяющимися минутами не считаются независимыми измерениями.</p></details>
+</div>
+<div id="wifi-results" class="card" aria-live="polite"><span class="muted">Результатов пока нет.</span></div>
 <h2>Журнал наблюдений</h2><form id="reading-form" class="card"><div class="form-grid"><label>Частота, МГц<input id="mhz" type="number" step="0.0001" min="0.001" max="6000" required placeholder="446.125"></label><label>Тип сигнала<select id="mode"><option>Не определён</option><option>FM / NFM</option><option>AM</option><option>DMR</option><option>TETRA</option><option>APCO P25</option><option>NXDN</option><option>dPMR</option><option>Другой</option></select></label><label class="wide">Оценка приёма<select id="strength"><option>Неизвестно</option><option>Слабый</option><option>Средний</option><option>Сильный</option></select></label></div><button class="primary" type="submit" style="margin-top:12px">+ Добавить наблюдение</button></form><div class="toolbar"><h2 style="flex:1;margin:0">Наблюдения</h2><button type="button" id="clear">Очистить</button></div><div class="card" id="entries" aria-live="polite"></div><div class="muted">Ручные и импортированные записи сохраняются в памяти браузера на этом устройстве. Импорт не подтверждает фактическую радиопередачу.</div></div></section>
 <section id="sdr-pane" class="pane"><div class="pad"><h2>Публичные SDR-приёмники</h2><div class="note">Ниже — прямой переход к согласованной с оператором станции и каталоги других приёмников. Открытие WebSDR не подключает автоматическое измерение сигнала к RadioRadar.</div>
 <div class="receiver"><h3>📡 WebSDR RW6MIT / R6MX</h3><div class="meta">Ростов-на-Дону · онлайн-приёмник<br>Доступные на просмотренном интерфейсе диапазоны: <b>2 м</b> и <b>70 см</b>.<br>Режим: <b>ручной просмотр спектра и прослушивание</b>.<br>Автоматический поток измерений: <b>не подключён</b>.<br>Приёмник находится в Ростове-на-Дону, а не обязательно в вашей зоне на карте.</div><a class="link" href="http://87.117.25.250/" target="_blank" rel="noopener noreferrer">📻 Открыть WebSDR<span>Внешний сайт http://87.117.25.250/ — в некоторых версиях Telegram HTTP-ссылки открываются только во внешнем браузере.</span></a></div>
@@ -546,6 +558,71 @@ $('nr-analyze').addEventListener('click',async()=>{
 });
 $('nr-export').addEventListener('click',()=>{if(!nrLastReport)return;const url=URL.createObjectURL(new Blob(['\uFEFF'+nrLastReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='RadioRadar_3_5_5G_report.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);});
 $('nr-clear').addEventListener('click',()=>{$('nr-file').value='';nrLastReport='';$('nr-export').disabled=true;nrEmpty();nrSay('Файл не загружен.');});
+
+
+// Privacy-preserving local Wi-Fi RSSI statistics. No scanning, MAC logging, or geolocation.
+let wifiReport='';
+function wifiSay(v){$('wifi-status').textContent=v;}
+function wifiEmpty(){const root=$('wifi-results');root.replaceChildren();const x=document.createElement('span');x.className='muted';x.textContent='Результатов пока нет.';root.append(x);}
+function wifiStamp(raw){
+ const s=String(raw||'').trim();
+ if(/^\d{4}\/\d\d\/\d\d-\d\d:\d\d:\d\d$/.test(s))return Date.parse(s.slice(0,10).replaceAll('/','-')+'T'+s.slice(11));
+ return Date.parse(s);
+}
+function wifiParse(contents,ssid){
+ const lines=contents.replace(/^\uFEFF/,'').split(/\r?\n/).filter(v=>v.trim());
+ if(lines.length<2||lines.length>15000)throw Error('Требуется файл с заголовком и измерениями (до 15 000 строк).');
+ const pipe=lines[0].includes('|');const headers=lines.shift().split(pipe?'|':',').map(v=>v.trim().toLowerCase());
+ let indexes,rows=[],ignored=0;
+ if(pipe){
+  for(const k of ['time stamp','ssid','strength','primary frequency'])if(!headers.includes(k))throw Error('Нет поля '+k+' в файле WiFiAnalyzer.');
+  if(!ssid)throw Error('Укажи точное имя только своей точки доступа в поле выше.');
+  indexes=['time stamp','ssid','strength','primary frequency'].map(k=>headers.indexOf(k));
+ } else {
+  for(const k of ['time','rssi_dbm','frequency_mhz'])if(!headers.includes(k))throw Error('Для CSV необходимы поля time,rssi_dbm,frequency_mhz.');
+  indexes=['time','rssi_dbm','frequency_mhz'].map(k=>headers.indexOf(k));
+ }
+ for(const line of lines){
+  const cells=line.split(pipe?'|':',');
+  if(pipe&&cells[indexes[1]].trim()!==ssid){ignored++;continue;}
+  const t=wifiStamp(cells[indexes[0]]),r=Number((cells[indexes[pipe?2:1]]||'').replace(/dBm\s*$/i,'').trim());
+  const f=Number((cells[indexes[pipe?3:2]]||'').replace(/MHz\s*$/i,'').trim());
+  if(!Number.isFinite(t)||!Number.isFinite(r)||r>0||r< -130||!Number.isFinite(f)||f<2300||f>7200){ignored++;continue;}
+  rows.push({t,r,f});
+ }
+ if(!rows.length)throw Error('Нет измерений своей сети с корректными RSSI, частотой и временем.');
+ rows.sort((a,b)=>a.t-b.t);
+ const unique=[];for(const r of rows){if(unique.length&&unique[unique.length-1].t===r.t){unique[unique.length-1]=r;}else unique.push(r);}
+ return {rows:unique,ignored,raw:rows.length,duplicate:rows.length-unique.length};
+}
+function wifiShow(rows,source,extra=''){
+ const root=$('wifi-results');root.replaceChildren();const h=document.createElement('strong');h.textContent='Проверка Wi-Fi RSSI завершена';root.append(h);
+ const rs=rows.map(v=>v.r),stats=nrStats(rs),freqs=[...new Set(rows.map(v=>v.f))];
+ labRow(root,'Источник',source);
+ labRow(root,'Отсчётов',String(rows.length));
+ labRow(root,'Среднее / медиана',stats.mean.toFixed(2)+' / '+stats.median.toFixed(2)+' dBm');
+ labRow(root,'Минимум / максимум',stats.min+' / '+stats.max+' dBm');
+ labRow(root,'Размах',(stats.max-stats.min).toFixed(1)+' dB');
+ labRow(root,'Частота',freqs.join(', ')+' МГц');
+ if(rows.length>=2)labRow(root,'Изменение от первого до последнего',(rows[rows.length-1].r-rows[0].r>0?'+':'')+(rows[rows.length-1].r-rows[0].r)+' dB');
+ const warn=document.createElement('p');warn.className='muted';warn.textContent='Wi-Fi RSSI отражает уровень своей точки доступа. Он не определяет расстояние, наличие других передатчиков и их местоположение. Повторные кадры Android могут дублировать одни и те же измерения. '+extra;root.append(warn);
+ wifiReport=['RadioRadar 3.6 — локальная проверка собственного Wi-Fi RSSI','Источник: '+source,'Записей: '+rows.length,'RSSI среднее: '+stats.mean.toFixed(2)+' dBm','Медиана: '+stats.median.toFixed(2)+' dBm','Минимум: '+stats.min+' dBm','Максимум: '+stats.max+' dBm','Размах: '+(stats.max-stats.min).toFixed(2)+' dB','Частоты: '+freqs.join(', ')+' МГц','','Измерения:'].concat(rows.map(v=>(Number.isFinite(v.t)?new Date(v.t).toISOString():'нет времени')+'; '+v.r+' dBm; '+v.f+' МГц'),['','ОГРАНИЧЕНИЯ',extra,'Исходные SSID, BSSID, IP, координаты и сведения о чужих сетях не записаны в отчёт.','Не является радиолокацией и не подтверждает работу детектора GMSK.']).join('\n');
+ $('wifi-export').disabled=false;wifiSay('Анализ выполнен локально. Можно скачать обезличенный отчёт.');
+}
+$('wifi-analyze').addEventListener('click',async()=>{
+ const file=$('wifi-file').files?.[0];if(!file){wifiSay('Выбери CSV или TXT.');return;}
+ if(file.size>1024*1024){wifiSay('Максимум 1 МБ.');return;}
+ $('wifi-analyze').disabled=true;$('wifi-export').disabled=true;wifiReport='';
+ try{
+  const parsed=wifiParse(await file.text(),$('wifi-ssid').value.trim());
+  wifiShow(parsed.rows,'Локальный файл: '+(file.name.endsWith('.txt')?'WiFiAnalyzer':'обезличенный CSV'),'Удалено записей с совпадающим временем: '+parsed.duplicate+'. Пропущено чужих сетей/некорректных строк: '+parsed.ignored+'.');
+ }catch(e){wifiEmpty();wifiSay('Ошибка: '+e.message);}finally{$('wifi-analyze').disabled=false;}
+});
+$('wifi-example').addEventListener('click',()=>{
+ wifiShow([{t:NaN,r:-61,f:2457},{t:NaN,r:-61,f:2457},{t:NaN,r:-57,f:2457},{t:NaN,r:-57,f:2457}], 'Четыре показания со скриншотов (08:06–08:08)', 'Скриншоты не дают точных секунд и не гарантируют независимость измерений. Это демонстрационная проверка обработки, не новый экспорт.');
+});
+$('wifi-export').addEventListener('click',()=>{if(!wifiReport)return;const url=URL.createObjectURL(new Blob(['\uFEFF'+wifiReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='RadioRadar_3_6_WiFi_RSSI_report.txt';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);});
+$('wifi-clear').addEventListener('click',()=>{$('wifi-file').value='';wifiReport='';$('wifi-export').disabled=true;wifiEmpty();wifiSay('Файл не загружен.');});
 
 render();
 })();

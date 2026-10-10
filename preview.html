@@ -56,7 +56,7 @@ button:focus-visible{outline:2px solid #7bece0}
 <body>
 <header><div style="max-width:720px;margin:auto"><div class="h"><strong>◉ RadioRadar</strong><span class="badge">Пробная версия</span></div><p>Приватные предупреждения · без установки отдельного приложения</p></div></header>
 <main class="wrap">
-<section class="panel"><div class="eyebrow">Шаг 1</div><div class="title">Выбери зону наблюдения</div><div class="sub">Нажми на карту, чтобы задать точку. Координаты не отправляются в RadioRadar и не записываются в его базу.</div><div id="map"></div><div id="mapError" role="status">Картографические серверы недоступны. Проверь интернет-соединение; без карты точку выбрать нельзя.</div><div id="mapHint" aria-live="polite">Загрузка карты…</div><div class="note">Картографические тайлы загружаются со сторонних серверов OpenStreetMap или CARTO. Им доступны технические сетевые данные и область карты. Не выбирай точный домашний адрес, если это нежелательно.</div></section>
+<section class="panel"><div class="eyebrow">Шаг 1</div><div class="title">Выбери зону наблюдения</div><div class="sub">Нажми на карту, чтобы задать точку. Координаты не отправляются в RadioRadar и не записываются в его базу.</div><div id="map"></div><div id="mapError" role="status">Картографические серверы недоступны. Проверь интернет-соединение; без карты точку выбрать нельзя.</div><div id="mapHint" aria-live="polite">Загрузка карты…</div><button class="btn secondary" id="retryMap" type="button">↻ Восстановить карту</button><div class="note">Картографические тайлы загружаются со сторонних серверов OpenStreetMap или CARTO. Им доступны технические сетевые данные и область карты. Не выбирай точный домашний адрес, если это нежелательно.</div></section>
 <section class="panel"><div class="eyebrow">Шаг 2</div><div class="title">Радиус зоны</div><div class="radii" id="radii"><button data-r="100" type="button">100 м</button><button data-r="500" type="button">500 м</button><button data-r="1000" type="button">1 км</button><button data-r="5000" type="button">5 км</button></div><div class="note">Радиус задаёт область проверки доступных данных, но не означает фактического радиопокрытия.</div></section>
 <section class="panel"><div class="eyebrow">Шаг 3</div><div class="title">Проверка и предупреждение</div><div class="demo"><b>ДЕМОНСТРАЦИЯ</b> · Сейчас нет подключённого источника наземных RF-измерений с подтверждённым покрытием выбранной зоны. Тестовые предупреждения не отражают реальную обстановку.</div><div class="smallrow"><span>Выбранная точка</span><b id="point">Не выбрана</b></div><div class="smallrow"><span>Радиус</span><b id="radiusText">500 м</b></div><div id="status" class="state" role="status" aria-live="polite"><div class="dot"></div><div><b id="statusTitle">Нет данных для оценки</b><p id="statusDescription">Выбери точку на карте и нажми «Проверить зону».</p></div></div><button class="btn primary" id="check" type="button">Проверить зону</button><button class="btn secondary" id="demo" type="button">🔔 Показать тестовое предупреждение</button><button class="btn secondary" id="reset" type="button">Сбросить тест</button></section>
 <section class="panel"><div class="title">Источники данных</div><div class="smallrow"><span>Наземные измерения выбранной зоны</span><b>Не подключены</b></div><div class="smallrow"><span>SatNOGS (архив спутниковых сеансов)</span><b>Отдельный архив</b></div><p class="footer">SatNOGS не используется для оценки активности раций и не вызывает предупреждений о людях. Отсутствие предупреждения не означает, что зона безопасна.</p><p class="footer">Данные о выбранной точке хранятся только в памяти открытой страницы и исчезают при перезагрузке. Для работы карты требуются сторонние серверы карт.</p></section>
@@ -67,7 +67,12 @@ button:focus-visible{outline:2px solid #7bece0}
   'use strict';
   const $=id=>document.getElementById(id);
   let point=null,radius=500,map=null,circle=null,marker=null,tileLayer=null;
-  let usingFallback=false,failCount=0,loadedCount=0,failedAll=false;
+  let sourceIndex=0,checkTimer=null,checkGeneration=0;
+  const sources=[
+    {url:'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', subdomains:'abcd', name:'CARTO', attr:'&copy; OpenStreetMap contributors &copy; CARTO'},
+    {url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png', name:'OpenStreetMap', attr:'&copy; OpenStreetMap contributors'},
+    {url:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', name:'Esri', attr:'Tiles &copy; Esri, HERE, Garmin, OpenStreetMap contributors'}
+  ];
   const tg=window.Telegram&&window.Telegram.WebApp;
   try{if(tg){tg.ready();tg.expand();}}catch(_e){}
   function label(r){return r>=1000?(r/1000)+' км':r+' м';}
@@ -81,36 +86,47 @@ button:focus-visible{outline:2px solid #7bece0}
     if(circle)circle.setRadius(radius);
     $('check').disabled=!point;
   }
-  function failover(){
-    if(!map||usingFallback)return;
-    usingFallback=true;failCount=0;loadedCount=0;
-    $('mapHint').textContent='Основной сервер карты недоступен. Переключаемся на резервную карту…';
-    if(tileLayer)map.removeLayer(tileLayer);
-    addTiles('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      {subdomains:'abcd',maxZoom:19});
+  // Measure visible pixel coverage, not just one successfully downloaded tile.
+  function tileCoverage(){
+    if(!map||!tileLayer||!tileLayer.getContainer())return 0;
+    const area=$('map').getBoundingClientRect();
+    if(area.width<20||area.height<20)return 0;
+    const imgs=Array.from(tileLayer.getContainer().querySelectorAll('img.leaflet-tile')).filter(i=>i.complete&&i.naturalWidth>0);
+    let covered=0,total=0;
+    for(let iy=0;iy<7;iy++)for(let ix=0;ix<9;ix++){
+      const x=area.left+(ix+.5)*area.width/9,y=area.top+(iy+.5)*area.height/7;
+      total++;
+      if(imgs.some(i=>{const r=i.getBoundingClientRect();return x>=r.left&&x<r.right&&y>=r.top&&y<r.bottom;}))covered++;
+    }
+    return covered/total;
   }
-  function addTiles(url,attribution,options){
-    tileLayer=L.tileLayer(url,Object.assign({attribution,maxZoom:19,keepBuffer:3,updateWhenIdle:true,crossOrigin:true},options||{}));
-    tileLayer.on('tileload',()=>{
-      loadedCount++;
-      $('mapError').style.display='none';
-      $('mapHint').textContent=usingFallback?'Резервная карта загружена':'Карта загружена';
-    });
-    tileLayer.on('tileerror',()=>{
-      failCount++;
-      if(!usingFallback&&(failCount>=2||loadedCount===0)){failover();return;}
-      if(usingFallback&&failCount>=3&&loadedCount===0){
-        if(!failedAll){failedAll=true;$('mapError').style.display='block';$('mapHint').textContent='Не удалось загрузить картографические изображения';}
-      }
-    });
+  function reportCoverage(){
+    const coverage=tileCoverage();
+    $('mapHint').textContent=coverage>=.92?'Карта загружена полностью ('+sources[sourceIndex].name+')':'Карта загружена частично ('+Math.round(coverage*100)+'%). '+(coverage<.6?'Пробуем восстановить…':'Можно выбрать точку, но часть карты отсутствует.');
+    $('mapError').style.display=coverage<.92&&sourceIndex===sources.length-1?'block':'none';
+    if(coverage<.92&&sourceIndex<sources.length-1){sourceIndex++;applySource();}
+  }
+  function scheduleCheck(){
+    clearTimeout(checkTimer);
+    const gen=++checkGeneration;
+    checkTimer=setTimeout(()=>{if(gen===checkGeneration)reportCoverage();},4200);
+  }
+  function applySource(){
+    if(!map)return;
+    clearTimeout(checkTimer);checkGeneration++;
+    if(tileLayer){map.removeLayer(tileLayer);tileLayer=null;}
+    const src=sources[sourceIndex];
+    $('mapHint').textContent='Загружаем карту: '+src.name+'…';
+    $('mapError').style.display='none';
+    tileLayer=L.tileLayer(src.url,{subdomains:src.subdomains||'abc',maxZoom:18,attribution:src.attr,updateWhenIdle:false,keepBuffer:2});
+    tileLayer.on('load',()=>{const v=tileCoverage();if(v>=.92){clearTimeout(checkTimer);$('mapHint').textContent='Карта загружена полностью ('+src.name+')';$('mapError').style.display='none';}});
     tileLayer.addTo(map);
+    map.invalidateSize({pan:false});
+    scheduleCheck();
   }
   if(typeof L!=='undefined'){
-    map=L.map('map',{zoomControl:true,preferCanvas:true,zoomAnimation:false,fadeAnimation:false}).setView([50.4501,30.5234],10);
-    addTiles('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-      {maxZoom:19});
+    map=L.map('map',{zoomControl:true,zoomAnimation:false,fadeAnimation:false}).setView([50.4501,30.5234],10);
+    applySource();
     map.on('click',e=>{
       point={lat:e.latlng.lat,lng:e.latlng.lng};
       if(marker)map.removeLayer(marker);if(circle)map.removeLayer(circle);
@@ -118,12 +134,14 @@ button:focus-visible{outline:2px solid #7bece0}
       marker=L.circleMarker([point.lat,point.lng],{radius:5,color:'#eaffff',fillColor:'#13b29f',fillOpacity:1}).addTo(map);
       status('idle','Нет данных для оценки','Точка выбрана. Нажми «Проверить зону».');update();
     });
-    const refreshMap=()=>{if(map){map.invalidateSize({pan:false});}};
-    window.addEventListener('pageshow',refreshMap);
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshMap();});
-    window.addEventListener('resize',refreshMap);
-    requestAnimationFrame(refreshMap);
-  }else{$('map').style.display='none';$('mapError').style.display='block';$('mapError').textContent='Не загрузилась библиотека карты Leaflet. Проверь соединение.';$('mapHint').textContent='';}
+    map.on('moveend',scheduleCheck);
+    const refresh=()=>{map.invalidateSize({pan:false});scheduleCheck();};
+    window.addEventListener('pageshow',refresh);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+    window.addEventListener('resize',refresh);
+    requestAnimationFrame(refresh);
+  }else{$('map').style.display='none';$('mapError').style.display='block';$('mapError').textContent='Не загрузилась библиотека карты Leaflet.';$('mapHint').textContent='';}
+  $('retryMap').addEventListener('click',()=>{sourceIndex=0;applySource();});
   $('radii').addEventListener('click',e=>{const b=e.target.closest('button[data-r]');if(!b)return;radius=Number(b.dataset.r);update();});
   $('check').addEventListener('click',()=>{if(!point)return;status('idle','Нет данных для оценки','Для выбранной зоны пока нет подтверждённого источника наземных измерений. Невозможно определить наличие или отсутствие сигналов.');});
   $('demo').addEventListener('click',()=>{status('alert','ТЕСТ: АНОМАЛИЯ','Это только имитация уведомления для проверки интерфейса. Реальная аномалия не обнаружена.');if(navigator.vibrate)navigator.vibrate([130,80,130]);});
